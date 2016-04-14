@@ -1,0 +1,3 @@
+touch-point-orientation-size.patch
+fix-premature-flushing-of-evdev-event-on-mx4.patch
+touchpad-add-a-middle-button-software-area.diff

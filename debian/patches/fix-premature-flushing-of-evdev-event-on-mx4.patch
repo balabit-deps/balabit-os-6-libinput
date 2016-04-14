@@ -1,0 +1,164 @@
+Subject: [PATCH v2 libinput] Fix premature flushing of evdev event on mx4 touchscreen
+From: Andreas Pokorny <andreas.pokorny@canonical.com>
+Date: 07.09.2015 22:57
+To: peter.hutterer@who-t.net, wayland-devel@lists.freedesktop.org
+CC: Andreas Pokorny <andreas.pokorny@canonical.com>
+
+The mx4 touchscreen driver emits BTN_TOUCH and BTN_TOOL_FINGER key events
+on a new contact. Prior to this patch only the BTN_TOUCH event was filtered
+out. Now the whole range of BTN_ events for tool types and certain builtin
+multi finger gestures are marked as non-key type.
+
+Signed-off-by: Andreas Pokorny <andreas.pokorny@canonical.com>
+---
+ src/evdev.c  |  10 +++---
+ test/touch.c | 110 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 115 insertions(+), 5 deletions(-)
+
+--- a/src/evdev.c
++++ b/src/evdev.c
+@@ -665,16 +665,16 @@ evdev_process_key(struct evdev_device *d
+ 	if (e->value == 2)
+ 		return;
+ 
+-	if (e->code == BTN_TOUCH) {
+-		if (!device->is_mt)
++	type = get_key_type(e->code);
++
++	if (type == EVDEV_KEY_TYPE_NONE) {
++		if (e->code == BTN_TOUCH && !device->is_mt)
+ 			evdev_process_touch_button(device, time, e->value);
+ 		return;
+ 	}
+ 
+ 	evdev_flush_pending_event(device, time);
+ 
+-	type = get_key_type(e->code);
+-
+ 	/* Ignore key release events from the kernel for keys that libinput
+ 	 * never got a pressed event for. */
+ 	if (e->value == 0) {
+--- a/test/touch.c
++++ b/test/touch.c
+@@ -912,6 +912,114 @@ START_TEST(touch_point_no_minor_or_orien
+ }
+ END_TEST
+ 
++START_TEST(touchscreen_with_btn_tool_finger_on_down)
++{
++	struct libevdev_uinput *uinput;
++	struct libinput *li;
++	struct libinput_device *device;
++	struct libinput_event *event;
++	struct libinput_event_touch *tev;
++	const struct input_absinfo abs[] = {
++		{ ABS_X, 0, 1152, 0, 0, 0 },
++		{ ABS_Y, 0, 1920, 0, 0, 0 },
++		{ ABS_MT_SLOT, 0, 9, 0, 0, 0 },
++		{ ABS_MT_TRACKING_ID, 0, 65535, 0, 0, 0 },
++		{ ABS_MT_POSITION_X, 0, 1152, 0, 0, 0 },
++		{ ABS_MT_POSITION_Y, 0, 1920, 0, 0, 0 },
++		{ ABS_MT_TOUCH_MAJOR, 0, 23, 0, 0, 0 },
++		{ ABS_MT_TOUCH_MINOR, 0, 23, 0, 0, 0 },
++		{ -1, -1, -1, -1, -1, -1 }
++	};
++	const struct input_event input_sequence[] = {
++		{ {0}, EV_ABS, ABS_MT_SLOT, 0},
++		{ {0}, EV_ABS, ABS_MT_TRACKING_ID, 9},
++		{ {0}, EV_KEY, BTN_TOUCH, 1},
++		{ {0}, EV_KEY, BTN_TOOL_FINGER, 1},
++		{ {0}, EV_ABS, ABS_MT_POSITION_X, 128},
++		{ {0}, EV_ABS, ABS_MT_POSITION_Y, 240},
++		{ {0}, EV_ABS, ABS_MT_TOUCH_MAJOR, 5},
++		{ {0}, EV_ABS, ABS_MT_TOUCH_MINOR, 4},
++		{ {0}, EV_SYN, SYN_REPORT, 0},
++		{ {0}, EV_ABS, ABS_MT_TOUCH_MAJOR, 6},
++		{ {0}, EV_SYN, SYN_REPORT, 0},
++		{ {0}, EV_ABS, ABS_MT_TRACKING_ID, -1},
++		{ {0}, EV_KEY, BTN_TOUCH, 0},
++		{ {0}, EV_KEY, BTN_TOOL_FINGER, 0},
++		{ {0}, EV_SYN, SYN_REPORT, 0}
++	};
++	const int num_events = ARRAY_LENGTH(input_sequence);
++	const int width = 1152;
++	const int height = 1920;
++	int x, y, major, minor;
++
++	uinput = litest_create_uinput_abs_device(
++		"test device",
++		NULL, abs,
++		EV_KEY, BTN_TOUCH,
++		EV_KEY, BTN_TOOL_FINGER,
++		INPUT_PROP_MAX, INPUT_PROP_DIRECT,
++		-1, -1);
++
++	li = litest_create_context();
++	device = libinput_path_add_device(li,
++					  libevdev_uinput_get_devnode(uinput));
++	ck_assert(device != NULL);
++	device = libinput_device_ref(device);
++	litest_drain_events(li);
++
++	for (int i = 0; i!=num_events; ++i)
++		libevdev_uinput_write_event(uinput,
++					    input_sequence[i].type,
++					    input_sequence[i].code,
++					    input_sequence[i].value);
++
++	litest_wait_for_event(li);
++
++	event = libinput_get_event(li);
++	tev = litest_is_touch_event(event, LIBINPUT_EVENT_TOUCH_DOWN);
++	x = round(libinput_event_touch_get_x_transformed(tev, width));
++	y = round(libinput_event_touch_get_y_transformed(tev, height)),
++	major = round(
++		libinput_event_touch_get_major_transformed(tev, width, height));
++	minor = round(
++		libinput_event_touch_get_minor_transformed(tev, width, height));
++	ck_assert_int_eq(x, 128);
++	ck_assert_int_eq(y, 240);
++	ck_assert_int_eq(major, 5);
++	ck_assert_int_eq(minor, 4);
++	libinput_event_destroy(event);
++
++	event = libinput_get_event(li);
++	tev = litest_is_touch_event(event, LIBINPUT_EVENT_TOUCH_FRAME);
++	libinput_event_destroy(event);
++
++	event = libinput_get_event(li);
++	tev = litest_is_touch_event(event, LIBINPUT_EVENT_TOUCH_MOTION);
++	major = round(
++		libinput_event_touch_get_major_transformed(tev, width, height));
++	ck_assert_int_eq(major, 6);
++	libinput_event_destroy(event);
++
++	event = libinput_get_event(li);
++	tev = litest_is_touch_event(event, LIBINPUT_EVENT_TOUCH_FRAME);
++	libinput_event_destroy(event);
++
++	event = libinput_get_event(li);
++	tev = litest_is_touch_event(event, LIBINPUT_EVENT_TOUCH_UP);
++	libinput_event_destroy(event);
++
++	event = libinput_get_event(li);
++	tev = litest_is_touch_event(event, LIBINPUT_EVENT_TOUCH_FRAME);
++	libinput_event_destroy(event);
++
++	litest_assert_empty_queue(li);
++
++	libinput_device_unref(device);
++	libinput_unref(li);
++	libevdev_uinput_destroy(uinput);
++}
++END_TEST
++
+ void
+ litest_setup_tests(void)
+ {
+@@ -942,4 +1050,6 @@ litest_setup_tests(void)
+ 	litest_add_ranged("touch:state", touch_initial_state, LITEST_TOUCH, LITEST_PROTOCOL_A, &axes);
+ 
+ 	litest_add("touch:time", touch_time_usec, LITEST_TOUCH, LITEST_TOUCHPAD);
++
++	litest_add_no_device("touch:special events", touchscreen_with_btn_tool_finger_on_down);
+ }
