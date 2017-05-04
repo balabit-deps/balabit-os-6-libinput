@@ -1,0 +1,134 @@
+From d8e452fc652461949d1fbc64a0364cdb31bbdb9e Mon Sep 17 00:00:00 2001
+From: Andreas Pokorny <andreas.pokorny@canonical.com>
+Date: Thu, 3 Sep 2015 10:21:51 +0200
+Subject: [PATCH libinput 2/4] extend tools to print and display touch event
+ properties
+
+event-gui draws the touch contact as two concentric ellipses that indicate
+contact pressure through oppacity.
+
+Signed-off-by: Andreas Pokorny <andreas.pokorny@canonical.com>
+---
+ tools/event-debug.c | 29 ++++++++++++++++++++++++++++-
+ tools/event-gui.c   | 39 +++++++++++++++++++++++++++++++++------
+ 2 files changed, 61 insertions(+), 7 deletions(-)
+
+--- a/tools/event-debug.c
++++ b/tools/event-debug.c
+@@ -584,14 +584,41 @@ print_touch_event_with_coords(struct lib
+ 	double y = libinput_event_touch_get_y_transformed(t, screen_height);
+ 	double xmm = libinput_event_touch_get_x(t);
+ 	double ymm = libinput_event_touch_get_y(t);
++	double major = libinput_event_touch_get_major_transformed(
++		t,
++		screen_width,
++		screen_height);
++	double minor = libinput_event_touch_get_minor_transformed(
++		t,
++		screen_width,
++		screen_height);
++	double majormm = libinput_event_touch_get_major(t);
++	double minormm = libinput_event_touch_get_minor(t);
++	double pressure = libinput_event_touch_get_pressure(t);
++	double orientation = libinput_event_touch_get_orientation(t);
++	int has_major = libinput_event_touch_has_major(t);
++	int has_minor = libinput_event_touch_has_minor(t);
++	int has_orientation = libinput_event_touch_has_orientation(t);
++	int has_pressure = libinput_event_touch_has_pressure(t);
+ 
+ 	print_event_time(libinput_event_touch_get_time(t));
+ 
+-	printf("%d (%d) %5.2f/%5.2f (%5.2f/%5.2fmm)\n",
++	printf("%d (%d) %5.2f/%5.2f (%5.2f/%5.2fmm)",
+ 	       libinput_event_touch_get_slot(t),
+ 	       libinput_event_touch_get_seat_slot(t),
+ 	       x, y,
+ 	       xmm, ymm);
++
++	if (has_major)
++		printf(" major:%3.2f/%3.2fmm", major, majormm);
++	if (has_minor)
++		printf(" minor:%3.2f/%3.2fmm", minor, minormm);
++	if (has_orientation)
++		printf(" o:%3.1f°", orientation);
++	if (has_pressure)
++		printf(" p:%1.2f", pressure);
++
++	printf("\n");
+ }
+ 
+ static void
+--- a/tools/event-gui.c
++++ b/tools/event-gui.c
+@@ -48,6 +48,9 @@ struct tools_context context;
+ struct touch {
+ 	int active;
+ 	int x, y;
++	double major, minor;
++	double angle;
++	double pressure;
+ };
+ 
+ struct point {
+@@ -193,13 +196,23 @@ draw_touchpoints(struct window *w, cairo
+ {
+ 	struct touch *t;
+ 
+-	cairo_set_source_rgb(cr, .8, .2, .2);
+-
+ 	ARRAY_FOR_EACH(w->touches, t) {
+-		cairo_save(cr);
+-		cairo_arc(cr, t->x, t->y, 10, 0, 2 * M_PI);
+-		cairo_fill(cr);
+-		cairo_restore(cr);
++		if (t->active) {
++			cairo_save(cr);
++			/* paint a filled ellipse with the original major minor values */
++			cairo_set_source_rgba(cr, .8, .2, .2, 0.5 + t->pressure / 2.);
++			cairo_translate(cr, t->x, t->y);
++			cairo_rotate(cr, t->angle * (M_PI / 180.0));
++			cairo_scale(cr, t->minor, t->major);
++			cairo_arc(cr, 0., 0., 1., 0, 2 * M_PI);
++			cairo_fill(cr);
++
++			/* paint a larger surrounding ellipse */
++			cairo_arc(cr, 0., 0., 4., 0, 2 * M_PI);
++			cairo_stroke(cr);
++
++			cairo_restore(cr);
++		}
+ 	}
+ }
+ 
+@@ -553,6 +566,8 @@ handle_event_touch(struct libinput_event
+ 	int slot = libinput_event_touch_get_seat_slot(t);
+ 	struct touch *touch;
+ 	double x, y;
++	double major;
++	double minor;
+ 
+ 	if (slot == -1 || slot >= (int) ARRAY_LENGTH(w->touches))
+ 		return;
+@@ -566,10 +581,22 @@ handle_event_touch(struct libinput_event
+ 
+ 	x = libinput_event_touch_get_x_transformed(t, w->width),
+ 	y = libinput_event_touch_get_y_transformed(t, w->height);
++	major = libinput_event_touch_get_major_transformed(t, w->width, w->height);
++	minor = libinput_event_touch_get_minor_transformed(t, w->width, w->height);
++
++	if (!libinput_event_touch_has_major(t))
++		major = 10.0;
++
++	if (!libinput_event_touch_has_minor(t))
++		minor = major;
+ 
+ 	touch->active = 1;
+ 	touch->x = (int)x;
+ 	touch->y = (int)y;
++	touch->major = major;
++	touch->minor = minor;
++	touch->angle = libinput_event_touch_get_orientation(t);
++	touch->pressure = libinput_event_touch_get_pressure(t);
+ }
+ 
+ static void

@@ -25,21 +25,29 @@
 #ifndef LIBINPUT_UTIL_H
 #define LIBINPUT_UTIL_H
 
+#include "config.h"
+
 #include <assert.h>
-#include <unistd.h>
+#include <errno.h>
+#include <limits.h>
+#include <locale.h>
 #include <math.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 
 #include "libinput.h"
 
 #define VENDOR_ID_APPLE 0x5ac
+#define VENDOR_ID_CHICONY 0x4f2
+#define VENDOR_ID_LOGITECH 0x46d
 #define VENDOR_ID_WACOM 0x56a
 #define VENDOR_ID_SYNAPTICS_SERIAL 0x002
 #define PRODUCT_ID_APPLE_KBD_TOUCHPAD 0x273
+#define PRODUCT_ID_APPLE_APPLETOUCH 0x21a
 #define PRODUCT_ID_SYNAPTICS_SERIAL 0x007
 
 /* The HW DPI rate we normalize to before calculating pointer acceleration */
@@ -60,7 +68,7 @@ struct list {
 void list_init(struct list *list);
 void list_insert(struct list *list, struct list *elm);
 void list_remove(struct list *elm);
-int list_empty(const struct list *list);
+bool list_empty(const struct list *list);
 
 #ifdef __GNUC__
 #define container_of(ptr, sample, member)				\
@@ -85,6 +93,7 @@ int list_empty(const struct list *list);
 	     pos = tmp,							\
 	     tmp = container_of(pos->member.next, tmp, member))
 
+#define NBITS(b) (b * 8)
 #define LONG_BITS (sizeof(long) * 8)
 #define NLONGS(x) (((x) + LONG_BITS - 1) / LONG_BITS)
 #define ARRAY_LENGTH(a) (sizeof (a) / sizeof (a)[0])
@@ -121,22 +130,22 @@ zalloc(size_t size)
  * except that it has been modified to work with arrays of unsigned chars
  */
 
-static inline int
+static inline bool
 bit_is_set(const unsigned char *array, int bit)
 {
-    return !!(array[bit / 8] & (1 << (bit % 8)));
+	return !!(array[bit / 8] & (1 << (bit % 8)));
 }
 
-static inline void
+	static inline void
 set_bit(unsigned char *array, int bit)
 {
-    array[bit / 8] |= (1 << (bit % 8));
+	array[bit / 8] |= (1 << (bit % 8));
 }
 
-static inline void
+	static inline void
 clear_bit(unsigned char *array, int bit)
 {
-    array[bit / 8] &= ~(1 << (bit % 8));
+	array[bit / 8] &= ~(1 << (bit % 8));
 }
 
 static inline void
@@ -145,7 +154,7 @@ msleep(unsigned int ms)
 	usleep(ms * 1000);
 }
 
-static inline int
+static inline bool
 long_bit_is_set(const unsigned long *array, int bit)
 {
 	return !!(array[bit / LONG_BITS] & (1LL << (bit % LONG_BITS)));
@@ -172,7 +181,7 @@ long_set_bit_state(unsigned long *array, int bit, int state)
 		long_clear_bit(array, bit);
 }
 
-static inline int
+static inline bool
 long_any_bit_set(unsigned long *array, size_t size)
 {
 	unsigned long i;
@@ -181,8 +190,14 @@ long_any_bit_set(unsigned long *array, size_t size)
 
 	for (i = 0; i < size; i++)
 		if (array[i] != 0)
-			return 1;
-	return 0;
+			return true;
+	return false;
+}
+
+static inline double
+deg2rad(int degree)
+{
+	return M_PI * degree / 180.0;
 }
 
 struct matrix {
@@ -226,8 +241,23 @@ matrix_init_translate(struct matrix *m, float x, float y)
 	m->val[1][2] = y;
 }
 
-static inline int
-matrix_is_identity(struct matrix *m)
+static inline void
+matrix_init_rotate(struct matrix *m, int degrees)
+{
+	double s, c;
+
+	s = sin(deg2rad(degrees));
+	c = cos(deg2rad(degrees));
+
+	matrix_init_identity(m);
+	m->val[0][0] = c;
+	m->val[0][1] = -s;
+	m->val[1][0] = s;
+	m->val[1][1] = c;
+}
+
+static inline bool
+matrix_is_identity(const struct matrix *m)
 {
 	return (m->val[0][0] == 1 &&
 		m->val[0][1] == 0 &&
@@ -262,7 +292,7 @@ matrix_mult(struct matrix *dest,
 }
 
 static inline void
-matrix_mult_vec(struct matrix *m, int *x, int *y)
+matrix_mult_vec(const struct matrix *m, int *x, int *y)
 {
 	int tx, ty;
 
@@ -344,6 +374,7 @@ enum ratelimit_state ratelimit_test(struct ratelimit *r);
 
 int parse_mouse_dpi_property(const char *prop);
 int parse_mouse_wheel_click_angle_property(const char *prop);
+int parse_mouse_wheel_click_count_property(const char *prop);
 double parse_trackpoint_accel_property(const char *prop);
 bool parse_dimension_property(const char *prop, size_t *width, size_t *height);
 
@@ -375,6 +406,74 @@ static inline uint32_t
 us2ms(uint64_t us)
 {
 	return (uint32_t)(us / 1000);
+}
+
+static inline bool
+safe_atoi(const char *str, int *val)
+{
+	char *endptr;
+	long v;
+
+	errno = 0;
+	v = strtol(str, &endptr, 10);
+	if (errno > 0)
+		return false;
+	if (str == endptr)
+		return false;
+	if (*str != '\0' && *endptr != '\0')
+		return false;
+
+	if (v > INT_MAX || v < INT_MIN)
+		return false;
+
+	*val = v;
+	return true;
+}
+
+static inline bool
+safe_atod(const char *str, double *val)
+{
+	char *endptr;
+	double v;
+	locale_t c_locale;
+
+	/* Create a "C" locale to force strtod to use '.' as separator */
+	c_locale = newlocale(LC_NUMERIC_MASK, "C", (locale_t)0);
+	if (c_locale == (locale_t)0)
+		return false;
+
+	errno = 0;
+	v = strtod_l(str, &endptr, c_locale);
+	freelocale(c_locale);
+	if (errno > 0)
+		return false;
+	if (str == endptr)
+		return false;
+	if (*str != '\0' && *endptr != '\0')
+		return false;
+	if (isnan(v) || isinf(v))
+		return false;
+
+	*val = v;
+	return true;
+}
+
+char **strv_from_string(const char *string, const char *separator);
+
+static inline void
+strv_free(char **strv) {
+	char **s = strv;
+
+	if (!strv)
+		return;
+
+	while (*s != NULL) {
+		free(*s);
+		*s = (char*)0x1; /* detect use-after-free */
+		s++;
+	}
+
+	free (strv);
 }
 
 #endif /* LIBINPUT_UTIL_H */

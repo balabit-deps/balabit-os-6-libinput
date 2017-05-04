@@ -24,6 +24,9 @@
 /* Build with libwacom */
 #undef HAVE_LIBWACOM
 
+/* libwacom_get_paired_device() is available */
+#undef HAVE_LIBWACOM_GET_PAIRED_DEVICE
+
 /* Define to 1 if you have the <memory.h> header file. */
 #undef HAVE_MEMORY_H
 
@@ -47,6 +50,15 @@
 
 /* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
+
+/* "libinput major version number" */
+#undef LIBINPUT_VERSION_MAJOR
+
+/* "libinput micro version number" */
+#undef LIBINPUT_VERSION_MICRO
+
+/* "libinput minor version number" */
+#undef LIBINPUT_VERSION_MINOR
 
 /* Define to the sub-directory where libtool stores uninstalled libraries. */
 #undef LT_OBJDIR
@@ -109,3 +121,6 @@
 
 /* Define to 1 if you need to in order for `stat' and other things to work. */
 #undef _POSIX_SOURCE
+
+/* noop static_assert() replacement */
+#undef static_assert

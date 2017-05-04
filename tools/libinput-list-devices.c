@@ -21,7 +21,8 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#define _GNU_SOURCE
+#include "config.h"
+
 #include <errno.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -204,7 +205,7 @@ accel_profiles(struct libinput_device *device)
 
 	profile = libinput_device_config_accel_get_default_profile(device);
 	xasprintf(&str,
-		  "%s%s%s%s",
+		  "%s%s %s%s",
 		  (profile == LIBINPUT_CONFIG_ACCEL_PROFILE_FLAT) ? "*" : "",
 		  (profiles & LIBINPUT_CONFIG_ACCEL_PROFILE_FLAT) ? "flat" : "",
 		  (profile == LIBINPUT_CONFIG_ACCEL_PROFILE_ADAPTIVE) ? "*" : "",
@@ -223,6 +224,44 @@ dwt_default(struct libinput_device *device)
 		return "enabled";
 	else
 		return "disabled";
+}
+
+static char *
+rotation_default(struct libinput_device *device)
+{
+	char *str;
+	double angle;
+
+	if (!libinput_device_config_rotation_is_available(device)) {
+		xasprintf(&str, "n/a");
+		return str;
+	}
+
+	angle = libinput_device_config_rotation_get_angle(device);
+	xasprintf(&str, "%.1f", angle);
+	return str;
+}
+
+static void
+print_pad_info(struct libinput_device *device)
+{
+	int nbuttons, nrings, nstrips, ngroups, nmodes;
+	struct libinput_tablet_pad_mode_group *group;
+
+	nbuttons = libinput_device_tablet_pad_get_num_buttons(device);
+	nrings = libinput_device_tablet_pad_get_num_rings(device);
+	nstrips = libinput_device_tablet_pad_get_num_strips(device);
+	ngroups = libinput_device_tablet_pad_get_num_mode_groups(device);
+
+	group = libinput_device_tablet_pad_get_mode_group(device, 0);
+	nmodes = libinput_tablet_pad_mode_group_get_num_modes(group);
+
+	printf("Pad:\n");
+	printf("	Rings:   %d\n", nrings);
+	printf("	Strips:  %d\n", nstrips);
+	printf("	Buttons: %d\n", nbuttons);
+	printf("	Mode groups: %d (%d modes)\n", ngroups, nmodes);
+
 }
 
 static void
@@ -268,10 +307,13 @@ print_device_notify(struct libinput_event *ev)
 		printf("pointer ");
 	if (libinput_device_has_capability(dev,
 					   LIBINPUT_DEVICE_CAP_TOUCH))
-		printf("touch");
+		printf("touch ");
 	if (libinput_device_has_capability(dev,
 					   LIBINPUT_DEVICE_CAP_TABLET_TOOL))
-		printf("tablet");
+		printf("tablet ");
+	if (libinput_device_has_capability(dev,
+					   LIBINPUT_DEVICE_CAP_TABLET_PAD))
+		printf("tablet-pad");
 	printf("\n");
 
 	printf("Tap-to-click:     %s\n", tap_default(dev));
@@ -297,6 +339,14 @@ print_device_notify(struct libinput_event *ev)
 	str = accel_profiles(dev);
 	printf("Accel profiles:   %s\n", str);
 	free(str);
+
+	str = rotation_default(dev);
+	printf("Rotation:         %s\n", str);
+	free(str);
+
+	if (libinput_device_has_capability(dev,
+					   LIBINPUT_DEVICE_CAP_TABLET_PAD))
+		print_pad_info(dev);
 
 	printf("\n");
 }

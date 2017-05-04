@@ -89,10 +89,7 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 @BUILD_DOCS_TRUE@am__append_1 = $(builddir)/html/index.html \
-@BUILD_DOCS_TRUE@	      $(doc_src) \
-@BUILD_DOCS_TRUE@	      $(diagram_files) \
-@BUILD_DOCS_TRUE@	      $(header_files) \
-@BUILD_DOCS_TRUE@	      $(style_files)
+@BUILD_DOCS_TRUE@	      $(doc_src)
 
 subdir = doc
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -220,6 +217,11 @@ PATH_SEPARATOR = @PATH_SEPARATOR@
 PKG_CONFIG = @PKG_CONFIG@
 PKG_CONFIG_LIBDIR = @PKG_CONFIG_LIBDIR@
 PKG_CONFIG_PATH = @PKG_CONFIG_PATH@
+PYTHON = @PYTHON@
+PYTHON_EXEC_PREFIX = @PYTHON_EXEC_PREFIX@
+PYTHON_PLATFORM = @PYTHON_PLATFORM@
+PYTHON_PREFIX = @PYTHON_PREFIX@
+PYTHON_VERSION = @PYTHON_VERSION@
 RANLIB = @RANLIB@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
@@ -271,9 +273,13 @@ mandir = @mandir@
 mkdir_p = @mkdir_p@
 oldincludedir = @oldincludedir@
 pdfdir = @pdfdir@
+pkgpyexecdir = @pkgpyexecdir@
+pkgpythondir = @pkgpythondir@
 prefix = @prefix@
 program_transform_name = @program_transform_name@
 psdir = @psdir@
+pyexecdir = @pyexecdir@
+pythondir = @pythondir@
 sbindir = @sbindir@
 sharedstatedir = @sharedstatedir@
 srcdir = @srcdir@
@@ -284,61 +290,79 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 EXTRA_DIST = middle-button-emulation.svg \
 	touchpad-tap-state-machine.svg \
-	touchpad-softbutton-state-machine.svg $(am__append_1)
+	touchpad-softbutton-state-machine.svg $(am__append_1) \
+	$(diagram_files) $(header_files) $(style_files)
+header_files = \
+	$(top_srcdir)/src/libinput.h \
+	$(top_srcdir)/README.txt \
+	$(srcdir)/absolute-axes.dox \
+	$(srcdir)/absolute-coordinate-ranges.dox \
+	$(srcdir)/building.dox \
+	$(srcdir)/clickpad-softbuttons.dox \
+	$(srcdir)/contributing.dox \
+	$(srcdir)/device-configuration-via-udev.dox \
+	$(srcdir)/faqs.dox \
+	$(srcdir)/gestures.dox \
+	$(srcdir)/middle-button-emulation.dox \
+	$(srcdir)/normalization-of-relative-motion.dox \
+	$(srcdir)/palm-detection.dox \
+	$(srcdir)/page-hierarchy.dox \
+	$(srcdir)/pointer-acceleration.dox \
+	$(srcdir)/reporting-bugs.dox \
+	$(srcdir)/scrolling.dox \
+	$(srcdir)/seats.dox \
+	$(srcdir)/t440-support.dox \
+	$(srcdir)/tablet-support.dox \
+	$(srcdir)/tapping.dox \
+	$(srcdir)/test-suite.dox \
+	$(srcdir)/tools.dox \
+	$(srcdir)/touchpad-jumping-cursors.dox \
+	$(srcdir)/touchpads.dox
+
+diagram_files = \
+	$(srcdir)/dot/seats-sketch.gv \
+	$(srcdir)/dot/seats-sketch-libinput.gv \
+	$(srcdir)/dot/libinput-stack-wayland.gv \
+	$(srcdir)/dot/libinput-stack-xorg.gv \
+	$(srcdir)/dot/libinput-stack-gnome.gv \
+	$(srcdir)/dot/evemu.gv \
+	$(srcdir)/svg/button-scrolling.svg \
+	$(srcdir)/svg/clickfinger.svg \
+	$(srcdir)/svg/clickfinger-distance.svg \
+	$(srcdir)/svg/edge-scrolling.svg \
+	$(srcdir)/svg/gesture-2fg-ambiguity.svg \
+	$(srcdir)/svg/palm-detection.svg \
+	$(srcdir)/svg/pinch-gestures.svg \
+	$(srcdir)/svg/pinch-gestures-softbuttons.svg \
+	$(srcdir)/svg/ptraccel-linear.svg \
+	$(srcdir)/svg/ptraccel-low-dpi.svg \
+	$(srcdir)/svg/ptraccel-touchpad.svg \
+	$(srcdir)/svg/ptraccel-trackpoint.svg \
+	$(srcdir)/svg/software-buttons.svg \
+	$(srcdir)/svg/swipe-gestures.svg \
+	$(srcdir)/svg/tablet-axes.svg \
+	$(srcdir)/svg/tablet-cintiq24hd-modes.svg \
+	$(srcdir)/svg/tablet-interfaces.svg \
+	$(srcdir)/svg/tablet-intuos-modes.svg \
+	$(srcdir)/svg/tablet-left-handed.svg \
+	$(srcdir)/svg/tablet-out-of-bounds.svg \
+	$(srcdir)/svg/tablet.svg \
+	$(srcdir)/svg/tap-n-drag.svg \
+	$(srcdir)/svg/thumb-detection.svg \
+	$(srcdir)/svg/top-software-buttons.svg \
+	$(srcdir)/svg/touchscreen-gestures.svg \
+	$(srcdir)/svg/twofinger-scrolling.svg
+
+style_files = \
+	      style/header.html \
+	      style/footer.html \
+	      style/customdoxygen.css \
+	      style/bootstrap.css
+
 @BUILD_DOCS_TRUE@noinst_DATA = html/index.html
-@BUILD_DOCS_TRUE@header_files = \
-@BUILD_DOCS_TRUE@	$(top_srcdir)/src/libinput.h \
-@BUILD_DOCS_TRUE@	$(top_srcdir)/README.txt \
-@BUILD_DOCS_TRUE@	$(srcdir)/absolute-axes.dox \
-@BUILD_DOCS_TRUE@	$(srcdir)/clickpad-softbuttons.dox \
-@BUILD_DOCS_TRUE@	$(srcdir)/device-configuration-via-udev.dox \
-@BUILD_DOCS_TRUE@	$(srcdir)/faqs.dox \
-@BUILD_DOCS_TRUE@	$(srcdir)/gestures.dox \
-@BUILD_DOCS_TRUE@	$(srcdir)/normalization-of-relative-motion.dox \
-@BUILD_DOCS_TRUE@	$(srcdir)/palm-detection.dox \
-@BUILD_DOCS_TRUE@	$(srcdir)/page-hierarchy.dox \
-@BUILD_DOCS_TRUE@	$(srcdir)/pointer-acceleration.dox \
-@BUILD_DOCS_TRUE@	$(srcdir)/reporting-bugs.dox \
-@BUILD_DOCS_TRUE@	$(srcdir)/scrolling.dox \
-@BUILD_DOCS_TRUE@	$(srcdir)/seats.dox \
-@BUILD_DOCS_TRUE@	$(srcdir)/t440-support.dox \
-@BUILD_DOCS_TRUE@	$(srcdir)/tablet-support.dox \
-@BUILD_DOCS_TRUE@	$(srcdir)/tapping.dox \
-@BUILD_DOCS_TRUE@	$(srcdir)/test-suite.dox \
-@BUILD_DOCS_TRUE@	$(srcdir)/tools.dox \
-@BUILD_DOCS_TRUE@	$(srcdir)/touchpads.dox
-
-@BUILD_DOCS_TRUE@diagram_files = \
-@BUILD_DOCS_TRUE@	$(srcdir)/dot/seats-sketch.gv \
-@BUILD_DOCS_TRUE@	$(srcdir)/dot/seats-sketch-libinput.gv \
-@BUILD_DOCS_TRUE@	$(srcdir)/dot/libinput-stack-wayland.gv \
-@BUILD_DOCS_TRUE@	$(srcdir)/dot/libinput-stack-xorg.gv \
-@BUILD_DOCS_TRUE@	$(srcdir)/dot/libinput-stack-gnome.gv \
-@BUILD_DOCS_TRUE@	$(srcdir)/dot/evemu.gv \
-@BUILD_DOCS_TRUE@	$(srcdir)/svg/software-buttons.svg \
-@BUILD_DOCS_TRUE@	$(srcdir)/svg/clickfinger.svg \
-@BUILD_DOCS_TRUE@	$(srcdir)/svg/button-scrolling.svg \
-@BUILD_DOCS_TRUE@	$(srcdir)/svg/edge-scrolling.svg \
-@BUILD_DOCS_TRUE@	$(srcdir)/svg/palm-detection.svg \
-@BUILD_DOCS_TRUE@	$(srcdir)/svg/pinch-gestures.svg \
-@BUILD_DOCS_TRUE@	$(srcdir)/svg/ptraccel-linear.svg \
-@BUILD_DOCS_TRUE@	$(srcdir)/svg/ptraccel-low-dpi.svg \
-@BUILD_DOCS_TRUE@	$(srcdir)/svg/ptraccel-touchpad.svg \
-@BUILD_DOCS_TRUE@	$(srcdir)/svg/ptraccel-trackpoint.svg \
-@BUILD_DOCS_TRUE@	$(srcdir)/svg/swipe-gestures.svg \
-@BUILD_DOCS_TRUE@	$(srcdir)/svg/tap-n-drag.svg \
-@BUILD_DOCS_TRUE@	$(srcdir)/svg/thumb-detection.svg \
-@BUILD_DOCS_TRUE@	$(srcdir)/svg/top-software-buttons.svg \
-@BUILD_DOCS_TRUE@	$(srcdir)/svg/touchscreen-gestures.svg \
-@BUILD_DOCS_TRUE@	$(srcdir)/svg/twofinger-scrolling.svg
-
-@BUILD_DOCS_TRUE@style_files = \
-@BUILD_DOCS_TRUE@	      style/header.html \
-@BUILD_DOCS_TRUE@	      style/footer.html \
-@BUILD_DOCS_TRUE@	      style/customdoxygen.css \
-@BUILD_DOCS_TRUE@	      style/bootstrap.css
-
 @BUILD_DOCS_TRUE@doc_src = $(shell find html -type f -printf "html/%P\n" 2>/dev/null)
+local_svg = $(shell find $(srcdir)/svg -type f -printf "$(srcdir)/svg/%P\n" 2>/dev/null)
+local_dotfiles = $(shell find $(srcdir)/dot -type f -printf "$(srcdir)/dot/%P\n" 2>/dev/null)
 all: all-am
 
 .SUFFIXES:
@@ -546,12 +570,19 @@ uninstall-am:
 @BUILD_DOCS_TRUE@clean-local:
 @BUILD_DOCS_TRUE@	$(AM_V_at)rm -rf html
 
+check:
+	@files=`echo $(local_svg) $(local_dotfiles) $(diagram_files) | tr ' ' '\n' | sort | uniq -u` && \
+		test -z "$$files" || (\
+		echo "SVG/dotfiles files present but missing from the Makefile.am:" && \
+		echo "$$files" && \
+		test)
+
 # make sure doc was built before running dist
 dist-hook:
 	@test -f $(distdir)/html/index.html || (\
 		echo "******************************************************" && \
 		echo "Couldn't find documentation files, refusing make dist." && \
-		echo "Install doxygen to build documentation for tarball." && \
+		echo "Install doxygen to build documentation for the tarball." && \
 		echo "******************************************************" && \
 		test )
 

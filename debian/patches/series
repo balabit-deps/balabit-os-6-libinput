@@ -1,3 +1,4 @@
-touch-point-orientation-size.patch
-fix-premature-flushing-of-evdev-event-on-mx4.patch
-touchpad-add-a-middle-button-software-area.diff
+0001-libinput-add-orientation-and-size-of-touch-point-and.patch
+0002-extend-tools-to-print-and-display-touch-event-proper.patch
+0003-Fix-premature-flushing-of-evdev-event-on-mx4-touchsc.patch
+0004-Keep-stanza-for-new-symbols-on-version-0.22.0.patch

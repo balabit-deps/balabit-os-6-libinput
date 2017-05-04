@@ -9,7 +9,8 @@
 #	90-libinput-model-quirks.rules
 #
 # Match string formats:
-#	libinput:<modalias>
+#	libinput:mouse:<modalias>
+#	libinput:touchpad:<modalias>
 #	libinput:name:<name>:dmi:<dmi string>
 #	libinput:name:<name>:fwversion:<version>
 #
@@ -26,10 +27,6 @@ libinput:name:*AlpsPS/2 ALPS DualPoint TouchPad:fwversion:800
 libinput:name:*AlpsPS/2 ALPS GlidePoint:fwversion:800
  LIBINPUT_ATTR_SIZE_HINT=100x55
 
-libinput:name:*AlpsPS/2 ALPS DualPoint TouchPad:fwversion:310
-libinput:name:*AlpsPS/2 ALPS GlidePoint:fwversion:310
- LIBINPUT_MODEL_ALPS_RUSHMORE=1
-
 ##########################################
 # Apple
 ##########################################
@@ -41,12 +38,31 @@ libinput:touchpad:input:b0005v05ACp*
 libinput:name:*Apple Inc. Apple Internal Keyboard*:dmi:*
  LIBINPUT_MODEL_APPLE_INTERNAL_KEYBOARD=1
 
+libinput:mouse:input:b0005v05ACp030D*
+ LIBINPUT_MODEL_APPLE_MAGICMOUSE=1
+
+libinput:touchpad:input:b0003v05ACp021A*
+ LIBINPUT_MODEL_APPLE_TOUCHPAD_ONEBUTTON=1
+
+##########################################
+# Asus
+##########################################
+libinput:name:*ETPS/2 Elantech Touchpad*:dmi:*svnASUSTeKCOMPUTERINC.:pnX555LAB:*
+ LIBINPUT_MODEL_TOUCHPAD_VISIBLE_MARKER=1
+
 ##########################################
 # Cyborg
 ##########################################
 # Saitek Cyborg R.A.T.5 Mouse
 libinput:mouse:input:b0003v06A3p0CD5*
  LIBINPUT_MODEL_CYBORG_RAT=1
+
+##########################################
+# Dell
+##########################################
+libinput:name:SynPS/2 Synaptics TouchPad:dmi:*svnDellInc.:*
+libinput:name:* Touchpad:dmi:*svnDellInc.:*
+ LIBINPUT_MODEL_TOUCHPAD_VISIBLE_MARKER=1
 
 ##########################################
 # Elantech
@@ -62,23 +78,47 @@ libinput:name:*ETPS/2 Elantech Touchpad*:dmi:*
 # The various chromebooks, info from modinfo chromeos_laptop, touchpad names
 # extrapolated from the chromiumos touchad-tests repo
 # https://chromium.googlesource.com/chromiumos/platform/touchpad-tests
-libinput:name:Cypress APA Trackpad (cyapa):dmi:*pnFalco:pvr*
+libinput:name:Cypress APA Trackpad ?cyapa?:dmi:*pnFalco:pvr*
 libinput:name:SynPS/2 Synaptics TouchPad:dmi:*pn*Mario*
-libinput:name:Cypress APA Trackpad (cyapa):dmi:*pn*Butterfly*
-libinput:name:Cypress APA Trackpad (cyapa):dmi:*pn*Peppy*
+libinput:name:Cypress APA Trackpad ?cyapa?:dmi:*pn*Butterfly*
+libinput:name:Cypress APA Trackpad ?cyapa?:dmi:*pn*Peppy*
 libinput:name:SynPS/2 Synaptics TouchPad:dmi:*pn*ZGB*
-libinput:name:Cypress APA Trackpad (cyapa):dmi:*pn*Parrot*
-libinput:name:Cypress APA Trackpad (cyapa):dmi:*bvn*coreboot*:pn*Leon*
-libinput:name:Cypress APA Trackpad (cyapa):dmi:*bvn*coreboot*:pn*Falco*
-libinput:name:Cypress APA Trackpad (cyapa):dmi:*bvn*coreboot*:pn*Wolf*
-libinput:name:Cypress APA Trackpad (cyapa):dmi:*svn*GOOGLE*:pn*Link*
+libinput:name:Cypress APA Trackpad ?cyapa?:dmi:*pn*Parrot*
+libinput:name:Cypress APA Trackpad ?cyapa?:dmi:*bvn*coreboot*:pn*Leon*
+libinput:name:Cypress APA Trackpad ?cyapa?:dmi:*bvn*coreboot*:pn*Falco*
+libinput:name:Cypress APA Trackpad ?cyapa?:dmi:*bvn*coreboot*:pn*Wolf*
+libinput:name:Cypress APA Trackpad ?cyapa?:dmi:*svn*GOOGLE*:pn*Link*
 libinput:name:SynPS/2 Synaptics TouchPad:dmi:*pn*Alex*
-libinput:name:Cypress APA Trackpad (cyapa):dmi:*svn*SAMSUNG*:pn*Lumpy*
+libinput:name:Cypress APA Trackpad ?cyapa?:dmi:*svn*SAMSUNG*:pn*Lumpy*
 libinput:name:Atmel maXTouch Touchpad:dmi:*svn*GOOGLE*:pn*Samus*
  LIBINPUT_MODEL_CHROMEBOOK=1
 
-libinput:name:Cypress APA Trackpad (cyapa):dmi:*
+libinput:name:Cypress APA Trackpad ?cyapa?:dmi:*
  LIBINPUT_MODEL_CYAPA=1
+
+##########################################
+# HP
+##########################################
+
+# HP Compaq6910p
+libinput:name:SynPS/2 Synaptics TouchPad:dmi:*svnHewlett-Packard:*pnHPCompaq6910p*
+ LIBINPUT_MODEL_HP6910_TOUCHPAD=1
+
+# HP Compaq 8510w
+libinput:name:SynPS/2 Synaptics TouchPad:dmi:*svnHewlett-Packard:*pnHPCompaq8510w*
+ LIBINPUT_MODEL_HP8510_TOUCHPAD=1
+
+# HP Pavillion dm4
+libinput:name:SynPS/2 Synaptics TouchPad:dmi:*svnHewlett-Packard:*pnHPPaviliondm4NotebookPC*
+ LIBINPUT_MODEL_HP_PAVILION_DM4_TOUCHPAD=1
+
+# HP Stream 11
+libinput:name:SYN1EDE:00 06CB:7442:dmi:*svnHewlett-Packard:pnHPStreamNotebookPC11*
+ LIBINPUT_MODEL_HP_STREAM11_TOUCHPAD=1
+
+# HP Zbook Studio G3
+libinput:name:AlpsPS/2 ALPS GlidePoint:dmi:*svnHP:pnHPZBookStudioG3:*
+ LIBINPUT_MODEL_HP_ZBOOK_STUDIO_G3=1
 
 ##########################################
 # LENOVO
@@ -106,6 +146,12 @@ libinput:name:SynPS/2 Synaptics TouchPad:dmi:*svnLENOVO:*:pvrThinkPad??50*:
 libinput:name:SynPS/2 Synaptics TouchPad:dmi:*svnLENOVO:*:pvrThinkPad??60*:
 libinput:name:SynPS/2 Synaptics TouchPad:dmi:*svnLENOVO:*:pvrThinkPadX1Carbon3rd:*
  LIBINPUT_MODEL_LENOVO_T450_TOUCHPAD=1
+
+##########################################
+# Logitech
+##########################################
+libinput:name:*Logitech M570*:dmi:*
+ LIBINPUT_MODEL_TRACKBALL=1
 
 ##########################################
 # Synaptics
@@ -138,3 +184,9 @@ libinput:name:SynPS/2 Synaptics TouchPad:dmi:*svnSystem76*pvrkudp1*
 ##########################################
 libinput:touchpad:input:b0003v056Ap*
  LIBINPUT_MODEL_WACOM_TOUCHPAD=1
+
+##########################################
+# Anything that has trackball in the name
+##########################################
+libinput:name:*Trackball*:dmi:*
+ LIBINPUT_MODEL_TRACKBALL=1
