@@ -20,11 +20,14 @@ libinput_la_SOURCES =			\
 	evdev-mt-touchpad-gestures.c	\
 	evdev-tablet.c			\
 	evdev-tablet.h			\
+	evdev-tablet-pad.c		\
+	evdev-tablet-pad.h		\
+	evdev-tablet-pad-leds.c		\
 	filter.c			\
 	filter.h			\
 	filter-private.h		\
-	path.h				\
-	path.c				\
+	path-seat.h			\
+	path-seat.c			\
 	udev-seat.c			\
 	udev-seat.h			\
 	timer.c				\

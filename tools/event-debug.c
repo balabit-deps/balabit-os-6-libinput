@@ -49,8 +49,11 @@ static unsigned int stop = 0;
 static void
 print_event_header(struct libinput_event *ev)
 {
+	/* use for pointer value only, do not dereference */
+	static void *last_device = NULL;
 	struct libinput_device *dev = libinput_event_get_device(ev);
 	const char *type = NULL;
+	char prefix;
 
 	switch(libinput_event_get_type(ev)) {
 	case LIBINPUT_EVENT_NONE:
@@ -121,9 +124,25 @@ print_event_header(struct libinput_event *ev)
 	case LIBINPUT_EVENT_TABLET_TOOL_BUTTON:
 		type = "TABLET_TOOL_BUTTON";
 		break;
+	case LIBINPUT_EVENT_TABLET_PAD_BUTTON:
+		type = "TABLET_PAD_BUTTON";
+		break;
+	case LIBINPUT_EVENT_TABLET_PAD_RING:
+		type = "TABLET_PAD_RING";
+		break;
+	case LIBINPUT_EVENT_TABLET_PAD_STRIP:
+		type = "TABLET_PAD_STRIP";
+		break;
 	}
 
-	printf("%-7s	%-16s ", libinput_device_get_sysname(dev), type);
+	prefix = (last_device != dev) ? '-' : ' ';
+
+	printf("%c%-7s  %-16s ",
+	       prefix,
+	       libinput_device_get_sysname(dev),
+	       type);
+
+	last_device = dev;
 }
 
 static void
@@ -150,7 +169,7 @@ print_device_notify(struct libinput_event *ev)
 		libinput_device_group_set_user_data(group, (void*)group_id);
 	}
 
-	printf("%-33s %5s %7s group%d",
+	printf("%-33s %5s %7s group%-2d",
 	       libinput_device_get_name(dev),
 	       libinput_seat_get_physical_name(seat),
 	       libinput_seat_get_logical_name(seat),
@@ -172,9 +191,12 @@ print_device_notify(struct libinput_event *ev)
 	if (libinput_device_has_capability(dev,
 					   LIBINPUT_DEVICE_CAP_TABLET_TOOL))
 		printf("T");
+	if (libinput_device_has_capability(dev,
+					   LIBINPUT_DEVICE_CAP_TABLET_PAD))
+		printf("P");
 
 	if (libinput_device_get_size(dev, &w, &h) == 0)
-		printf("\tsize %.2f/%.2fmm", w, h);
+		printf("  size %.0fx%.0fmm", w, h);
 
 	if (libinput_device_config_tap_get_finger_count(dev)) {
 	    printf(" tap");
@@ -218,25 +240,53 @@ print_device_notify(struct libinput_event *ev)
 			printf(" dwt-off)");
 	}
 
+	if (libinput_device_has_capability(dev,
+					   LIBINPUT_DEVICE_CAP_TABLET_PAD)) {
+		int nbuttons, nstrips, nrings, ngroups;
+
+		nbuttons = libinput_device_tablet_pad_get_num_buttons(dev);
+		nstrips = libinput_device_tablet_pad_get_num_strips(dev);
+		nrings = libinput_device_tablet_pad_get_num_rings(dev);
+		ngroups = libinput_device_tablet_pad_get_num_mode_groups(dev);
+
+		printf(" buttons:%d strips:%d rings:%d mode groups:%d",
+		       nbuttons,
+		       nstrips,
+		       nrings,
+		       ngroups);
+	}
+
 	printf("\n");
 
 }
 
 static void
-print_key_event(struct libinput_event *ev)
+print_key_event(struct libinput *li, struct libinput_event *ev)
 {
 	struct libinput_event_keyboard *k = libinput_event_get_keyboard_event(ev);
+	struct tools_context *context;
+	struct tools_options *options;
 	enum libinput_key_state state;
 	uint32_t key;
 	const char *keyname;
+
+	context = libinput_get_user_data(li);
+	options = &context->options;
 
 	print_event_time(libinput_event_keyboard_get_time(k));
 	state = libinput_event_keyboard_get_key_state(k);
 
 	key = libinput_event_keyboard_get_key(k);
-	keyname = libevdev_event_code_get_name(EV_KEY, key);
+	if (!options->show_keycodes &&
+	    (key >= KEY_ESC && key < KEY_ZENKAKUHANKAKU)) {
+		keyname = "***";
+		key = -1;
+	} else {
+		keyname = libevdev_event_code_get_name(EV_KEY, key);
+		keyname = keyname ? keyname : "???";
+	}
 	printf("%s (%d) %s\n",
-	       keyname ? keyname : "???",
+	       keyname,
 	       key,
 	       state == LIBINPUT_KEY_STATE_PRESSED ? "pressed" : "released");
 }
@@ -304,12 +354,18 @@ print_tablet_button_event(struct libinput_event *ev)
 {
 	struct libinput_event_tablet_tool *p = libinput_event_get_tablet_tool_event(ev);
 	enum libinput_button_state state;
+	const char *buttonname;
+	int button;
 
 	print_event_time(libinput_event_tablet_tool_get_time(p));
 
+	button = libinput_event_tablet_tool_get_button(p);
+	buttonname = libevdev_event_code_get_name(EV_KEY, button);
+
 	state = libinput_event_tablet_tool_get_button_state(p);
-	printf("%3d %s, seat count: %u\n",
-	       libinput_event_tablet_tool_get_button(p),
+	printf("%3d (%s) %s, seat count: %u\n",
+	       button,
+	       buttonname ? buttonname : "???",
 	       state == LIBINPUT_BUTTON_STATE_PRESSED ? "pressed" : "released",
 	       libinput_event_tablet_tool_get_seat_button_count(p));
 }
@@ -321,6 +377,19 @@ print_pointer_axis_event(struct libinput_event *ev)
 	double v = 0, h = 0;
 	const char *have_vert = "",
 		   *have_horiz = "";
+	const char *source = "invalid";
+
+	switch (libinput_event_pointer_get_axis_source(p)) {
+	case LIBINPUT_POINTER_AXIS_SOURCE_WHEEL:
+		source = "wheel";
+		break;
+	case LIBINPUT_POINTER_AXIS_SOURCE_FINGER:
+		source = "finger";
+		break;
+	case LIBINPUT_POINTER_AXIS_SOURCE_CONTINUOUS:
+		source = "continuous";
+		break;
+	}
 
 	if (libinput_event_pointer_has_axis(p,
 				LIBINPUT_POINTER_AXIS_SCROLL_VERTICAL)) {
@@ -335,7 +404,8 @@ print_pointer_axis_event(struct libinput_event *ev)
 		have_horiz = "*";
 	}
 	print_event_time(libinput_event_pointer_get_time(p));
-	printf("vert %.2f%s horiz %.2f%s\n", v, have_vert, h, have_horiz);
+	printf("vert %.2f%s horiz %.2f%s (%s)\n",
+	       v, have_vert, h, have_horiz, source);
 }
 
 static void
@@ -351,7 +421,7 @@ print_tablet_axes(struct libinput_event_tablet_tool *t)
 	(libinput_event_tablet_tool_##ax##_has_changed(ev) ? "*" : "")
 
 	x = libinput_event_tablet_tool_get_x(t);
-	y = libinput_event_tablet_tool_get_x(t);
+	y = libinput_event_tablet_tool_get_y(t);
 	printf("\t%.2f%s/%.2f%s",
 	       x, changed_sym(t, x),
 	       y, changed_sym(t, y));
@@ -568,6 +638,83 @@ print_gesture_event_with_coords(struct libinput_event *ev)
 	}
 }
 
+static void
+print_tablet_pad_button_event(struct libinput_event *ev)
+{
+	struct libinput_event_tablet_pad *p = libinput_event_get_tablet_pad_event(ev);
+	struct libinput_tablet_pad_mode_group *group;
+	enum libinput_button_state state;
+	unsigned int button, mode;
+
+	print_event_time(libinput_event_tablet_pad_get_time(p));
+
+	button = libinput_event_tablet_pad_get_button_number(p),
+	state = libinput_event_tablet_pad_get_button_state(p);
+	mode = libinput_event_tablet_pad_get_mode(p);
+	printf("%3d %s (mode %d)",
+	       button,
+	       state == LIBINPUT_BUTTON_STATE_PRESSED ? "pressed" : "released",
+	       mode);
+
+	group = libinput_event_tablet_pad_get_mode_group(p);
+	if (libinput_tablet_pad_mode_group_button_is_toggle(group, button))
+		printf(" <mode toggle>");
+
+	printf("\n");
+}
+
+static void
+print_tablet_pad_ring_event(struct libinput_event *ev)
+{
+	struct libinput_event_tablet_pad *p = libinput_event_get_tablet_pad_event(ev);
+	const char *source = "<invalid>";
+	unsigned int mode;
+
+	print_event_time(libinput_event_tablet_pad_get_time(p));
+
+	switch (libinput_event_tablet_pad_get_ring_source(p)) {
+	case LIBINPUT_TABLET_PAD_RING_SOURCE_FINGER:
+		source = "finger";
+		break;
+	case LIBINPUT_TABLET_PAD_RING_SOURCE_UNKNOWN:
+		source = "unknown";
+		break;
+	}
+
+	mode = libinput_event_tablet_pad_get_mode(p);
+	printf("ring %d position %.2f (source %s) (mode %d)\n",
+	       libinput_event_tablet_pad_get_ring_number(p),
+	       libinput_event_tablet_pad_get_ring_position(p),
+	       source,
+	       mode);
+}
+
+static void
+print_tablet_pad_strip_event(struct libinput_event *ev)
+{
+	struct libinput_event_tablet_pad *p = libinput_event_get_tablet_pad_event(ev);
+	const char *source = "<invalid>";
+	unsigned int mode;
+
+	print_event_time(libinput_event_tablet_pad_get_time(p));
+
+	switch (libinput_event_tablet_pad_get_strip_source(p)) {
+	case LIBINPUT_TABLET_PAD_STRIP_SOURCE_FINGER:
+		source = "finger";
+		break;
+	case LIBINPUT_TABLET_PAD_STRIP_SOURCE_UNKNOWN:
+		source = "unknown";
+		break;
+	}
+
+	mode = libinput_event_tablet_pad_get_mode(p);
+	printf("strip %d position %.2f (source %s) (mode %d)\n",
+	       libinput_event_tablet_pad_get_strip_number(p),
+	       libinput_event_tablet_pad_get_strip_position(p),
+	       source,
+	       mode);
+}
+
 static int
 handle_and_print_events(struct libinput *li)
 {
@@ -588,7 +735,7 @@ handle_and_print_events(struct libinput *li)
 						  &context.options);
 			break;
 		case LIBINPUT_EVENT_KEYBOARD_KEY:
-			print_key_event(ev);
+			print_key_event(li, ev);
 			break;
 		case LIBINPUT_EVENT_POINTER_MOTION:
 			print_motion_event(ev);
@@ -646,6 +793,15 @@ handle_and_print_events(struct libinput *li)
 			break;
 		case LIBINPUT_EVENT_TABLET_TOOL_BUTTON:
 			print_tablet_button_event(ev);
+			break;
+		case LIBINPUT_EVENT_TABLET_PAD_BUTTON:
+			print_tablet_pad_button_event(ev);
+			break;
+		case LIBINPUT_EVENT_TABLET_PAD_RING:
+			print_tablet_pad_ring_event(ev);
+			break;
+		case LIBINPUT_EVENT_TABLET_PAD_STRIP:
+			print_tablet_pad_strip_event(ev);
 			break;
 		}
 

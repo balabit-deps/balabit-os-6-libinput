@@ -55,6 +55,8 @@ struct tablet_dispatch {
 	unsigned char changed_axes[NCHARS(LIBINPUT_TABLET_TOOL_AXIS_MAX + 1)];
 	struct tablet_axes axes;
 	unsigned char axis_caps[NCHARS(LIBINPUT_TABLET_TOOL_AXIS_MAX + 1)];
+	int current_value[LIBINPUT_TABLET_TOOL_AXIS_MAX + 1];
+	int prev_value[LIBINPUT_TABLET_TOOL_AXIS_MAX + 1];
 
 	/* Only used for tablets that don't report serial numbers */
 	struct list tool_list;
@@ -67,6 +69,11 @@ struct tablet_dispatch {
 	uint32_t current_tool_serial;
 
 	uint32_t cursor_proximity_threshold;
+
+	struct libinput_device_config_calibration calibration;
+
+	/* The paired touch device on devices with both pen & touch */
+	struct evdev_device *touch_device;
 };
 
 static inline enum libinput_tablet_tool_axis
@@ -199,6 +206,12 @@ tablet_tool_type_to_string(enum libinput_tablet_tool_type type)
 	}
 
 	return str;
+}
+
+static inline struct libinput *
+tablet_libinput_context(const struct tablet_dispatch *tablet)
+{
+	return evdev_libinput_context(tablet->device);
 }
 
 #endif

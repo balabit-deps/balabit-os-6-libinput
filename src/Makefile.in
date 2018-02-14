@@ -102,7 +102,8 @@ DIST_COMMON = $(srcdir)/Makefile.am $(include_HEADERS) \
 	$(am__DIST_COMMON)
 mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = $(top_builddir)/config.h
-CONFIG_CLEAN_FILES = libinput.pc libinput-version.h
+CONFIG_CLEAN_FILES = libinput.pc libinput-uninstalled.pc \
+	libinput-version.h
 CONFIG_CLEAN_VPATH_FILES =
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
 am__vpath_adj = case $$p in \
@@ -161,8 +162,9 @@ am_libinput_la_OBJECTS = libinput_la-libinput.lo libinput_la-evdev.lo \
 	libinput_la-evdev-mt-touchpad-buttons.lo \
 	libinput_la-evdev-mt-touchpad-edge-scroll.lo \
 	libinput_la-evdev-mt-touchpad-gestures.lo \
-	libinput_la-evdev-tablet.lo libinput_la-filter.lo \
-	libinput_la-path.lo libinput_la-udev-seat.lo \
+	libinput_la-evdev-tablet.lo libinput_la-evdev-tablet-pad.lo \
+	libinput_la-evdev-tablet-pad-leds.lo libinput_la-filter.lo \
+	libinput_la-path-seat.lo libinput_la-udev-seat.lo \
 	libinput_la-timer.lo
 libinput_la_OBJECTS = $(am_libinput_la_OBJECTS)
 libinput_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
@@ -233,6 +235,7 @@ am__define_uniq_tagged_files = \
 ETAGS = etags
 CTAGS = ctags
 am__DIST_COMMON = $(srcdir)/Makefile.in \
+	$(srcdir)/libinput-uninstalled.pc.in \
 	$(srcdir)/libinput-version.h.in $(srcdir)/libinput.pc.in \
 	$(top_srcdir)/depcomp
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
@@ -326,6 +329,11 @@ PATH_SEPARATOR = @PATH_SEPARATOR@
 PKG_CONFIG = @PKG_CONFIG@
 PKG_CONFIG_LIBDIR = @PKG_CONFIG_LIBDIR@
 PKG_CONFIG_PATH = @PKG_CONFIG_PATH@
+PYTHON = @PYTHON@
+PYTHON_EXEC_PREFIX = @PYTHON_EXEC_PREFIX@
+PYTHON_PLATFORM = @PYTHON_PLATFORM@
+PYTHON_PREFIX = @PYTHON_PREFIX@
+PYTHON_VERSION = @PYTHON_VERSION@
 RANLIB = @RANLIB@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
@@ -377,9 +385,13 @@ mandir = @mandir@
 mkdir_p = @mkdir_p@
 oldincludedir = @oldincludedir@
 pdfdir = @pdfdir@
+pkgpyexecdir = @pkgpyexecdir@
+pkgpythondir = @pkgpythondir@
 prefix = @prefix@
 program_transform_name = @program_transform_name@
 psdir = @psdir@
+pyexecdir = @pyexecdir@
+pythondir = @pythondir@
 sbindir = @sbindir@
 sharedstatedir = @sharedstatedir@
 srcdir = @srcdir@
@@ -410,11 +422,14 @@ libinput_la_SOURCES = \
 	evdev-mt-touchpad-gestures.c	\
 	evdev-tablet.c			\
 	evdev-tablet.h			\
+	evdev-tablet-pad.c		\
+	evdev-tablet-pad.h		\
+	evdev-tablet-pad-leds.c		\
 	filter.c			\
 	filter.h			\
 	filter-private.h		\
-	path.h				\
-	path.c				\
+	path-seat.h			\
+	path-seat.c			\
 	udev-seat.c			\
 	udev-seat.h			\
 	timer.c				\
@@ -494,6 +509,8 @@ $(ACLOCAL_M4):  $(am__aclocal_m4_deps)
 $(am__aclocal_m4_deps):
 libinput.pc: $(top_builddir)/config.status $(srcdir)/libinput.pc.in
 	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
+libinput-uninstalled.pc: $(top_builddir)/config.status $(srcdir)/libinput-uninstalled.pc.in
+	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
 libinput-version.h: $(top_builddir)/config.status $(srcdir)/libinput-version.h.in
 	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
 
@@ -565,11 +582,13 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libinput_la-evdev-mt-touchpad-gestures.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libinput_la-evdev-mt-touchpad-tap.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libinput_la-evdev-mt-touchpad.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libinput_la-evdev-tablet-pad-leds.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libinput_la-evdev-tablet-pad.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libinput_la-evdev-tablet.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libinput_la-evdev.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libinput_la-filter.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libinput_la-libinput.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libinput_la-path.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libinput_la-path-seat.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libinput_la-timer.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libinput_la-udev-seat.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libinput_util_la-libinput-util.Plo@am__quote@
@@ -672,6 +691,20 @@ libinput_la-evdev-tablet.lo: evdev-tablet.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libinput_la_CFLAGS) $(CFLAGS) -c -o libinput_la-evdev-tablet.lo `test -f 'evdev-tablet.c' || echo '$(srcdir)/'`evdev-tablet.c
 
+libinput_la-evdev-tablet-pad.lo: evdev-tablet-pad.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libinput_la_CFLAGS) $(CFLAGS) -MT libinput_la-evdev-tablet-pad.lo -MD -MP -MF $(DEPDIR)/libinput_la-evdev-tablet-pad.Tpo -c -o libinput_la-evdev-tablet-pad.lo `test -f 'evdev-tablet-pad.c' || echo '$(srcdir)/'`evdev-tablet-pad.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libinput_la-evdev-tablet-pad.Tpo $(DEPDIR)/libinput_la-evdev-tablet-pad.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='evdev-tablet-pad.c' object='libinput_la-evdev-tablet-pad.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libinput_la_CFLAGS) $(CFLAGS) -c -o libinput_la-evdev-tablet-pad.lo `test -f 'evdev-tablet-pad.c' || echo '$(srcdir)/'`evdev-tablet-pad.c
+
+libinput_la-evdev-tablet-pad-leds.lo: evdev-tablet-pad-leds.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libinput_la_CFLAGS) $(CFLAGS) -MT libinput_la-evdev-tablet-pad-leds.lo -MD -MP -MF $(DEPDIR)/libinput_la-evdev-tablet-pad-leds.Tpo -c -o libinput_la-evdev-tablet-pad-leds.lo `test -f 'evdev-tablet-pad-leds.c' || echo '$(srcdir)/'`evdev-tablet-pad-leds.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libinput_la-evdev-tablet-pad-leds.Tpo $(DEPDIR)/libinput_la-evdev-tablet-pad-leds.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='evdev-tablet-pad-leds.c' object='libinput_la-evdev-tablet-pad-leds.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libinput_la_CFLAGS) $(CFLAGS) -c -o libinput_la-evdev-tablet-pad-leds.lo `test -f 'evdev-tablet-pad-leds.c' || echo '$(srcdir)/'`evdev-tablet-pad-leds.c
+
 libinput_la-filter.lo: filter.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libinput_la_CFLAGS) $(CFLAGS) -MT libinput_la-filter.lo -MD -MP -MF $(DEPDIR)/libinput_la-filter.Tpo -c -o libinput_la-filter.lo `test -f 'filter.c' || echo '$(srcdir)/'`filter.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libinput_la-filter.Tpo $(DEPDIR)/libinput_la-filter.Plo
@@ -679,12 +712,12 @@ libinput_la-filter.lo: filter.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libinput_la_CFLAGS) $(CFLAGS) -c -o libinput_la-filter.lo `test -f 'filter.c' || echo '$(srcdir)/'`filter.c
 
-libinput_la-path.lo: path.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libinput_la_CFLAGS) $(CFLAGS) -MT libinput_la-path.lo -MD -MP -MF $(DEPDIR)/libinput_la-path.Tpo -c -o libinput_la-path.lo `test -f 'path.c' || echo '$(srcdir)/'`path.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libinput_la-path.Tpo $(DEPDIR)/libinput_la-path.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='path.c' object='libinput_la-path.lo' libtool=yes @AMDEPBACKSLASH@
+libinput_la-path-seat.lo: path-seat.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libinput_la_CFLAGS) $(CFLAGS) -MT libinput_la-path-seat.lo -MD -MP -MF $(DEPDIR)/libinput_la-path-seat.Tpo -c -o libinput_la-path-seat.lo `test -f 'path-seat.c' || echo '$(srcdir)/'`path-seat.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libinput_la-path-seat.Tpo $(DEPDIR)/libinput_la-path-seat.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='path-seat.c' object='libinput_la-path-seat.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libinput_la_CFLAGS) $(CFLAGS) -c -o libinput_la-path.lo `test -f 'path.c' || echo '$(srcdir)/'`path.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libinput_la_CFLAGS) $(CFLAGS) -c -o libinput_la-path-seat.lo `test -f 'path-seat.c' || echo '$(srcdir)/'`path-seat.c
 
 libinput_la-udev-seat.lo: udev-seat.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libinput_la_CFLAGS) $(CFLAGS) -MT libinput_la-udev-seat.lo -MD -MP -MF $(DEPDIR)/libinput_la-udev-seat.Tpo -c -o libinput_la-udev-seat.lo `test -f 'udev-seat.c' || echo '$(srcdir)/'`udev-seat.c

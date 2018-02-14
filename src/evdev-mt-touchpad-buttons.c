@@ -64,6 +64,7 @@ static inline const char*
 button_event_to_str(enum button_event event) {
 	switch(event) {
 	CASE_RETURN_STRING(BUTTON_EVENT_IN_BOTTOM_R);
+	CASE_RETURN_STRING(BUTTON_EVENT_IN_BOTTOM_M);
 	CASE_RETURN_STRING(BUTTON_EVENT_IN_BOTTOM_L);
 	CASE_RETURN_STRING(BUTTON_EVENT_IN_TOP_R);
 	CASE_RETURN_STRING(BUTTON_EVENT_IN_TOP_M);
@@ -93,10 +94,20 @@ is_inside_bottom_right_area(const struct tp_dispatch *tp,
 }
 
 static inline bool
+is_inside_bottom_middle_area(const struct tp_dispatch *tp,
+			   const struct tp_touch *t)
+{
+	return is_inside_bottom_button_area(tp, t) &&
+	       !is_inside_bottom_right_area(tp, t) &&
+	       t->point.x > tp->buttons.bottom_area.middlebutton_left_edge;
+}
+
+static inline bool
 is_inside_bottom_left_area(const struct tp_dispatch *tp,
 			   const struct tp_touch *t)
 {
 	return is_inside_bottom_button_area(tp, t) &&
+	       !is_inside_bottom_middle_area(tp, t) &&
 	       !is_inside_bottom_right_area(tp, t);
 }
 
@@ -192,6 +203,7 @@ tp_button_none_handle_event(struct tp_dispatch *tp,
 {
 	switch (event) {
 	case BUTTON_EVENT_IN_BOTTOM_R:
+	case BUTTON_EVENT_IN_BOTTOM_M:
 	case BUTTON_EVENT_IN_BOTTOM_L:
 		tp_button_set_state(tp, t, BUTTON_STATE_BOTTOM, event);
 		break;
@@ -220,6 +232,7 @@ tp_button_area_handle_event(struct tp_dispatch *tp,
 {
 	switch (event) {
 	case BUTTON_EVENT_IN_BOTTOM_R:
+	case BUTTON_EVENT_IN_BOTTOM_M:
 	case BUTTON_EVENT_IN_BOTTOM_L:
 	case BUTTON_EVENT_IN_TOP_R:
 	case BUTTON_EVENT_IN_TOP_M:
@@ -243,6 +256,7 @@ tp_button_bottom_handle_event(struct tp_dispatch *tp,
 {
 	switch (event) {
 	case BUTTON_EVENT_IN_BOTTOM_R:
+	case BUTTON_EVENT_IN_BOTTOM_M:
 	case BUTTON_EVENT_IN_BOTTOM_L:
 		if (event != t->button.curr)
 			tp_button_set_state(tp,
@@ -273,6 +287,7 @@ tp_button_top_handle_event(struct tp_dispatch *tp,
 {
 	switch (event) {
 	case BUTTON_EVENT_IN_BOTTOM_R:
+	case BUTTON_EVENT_IN_BOTTOM_M:
 	case BUTTON_EVENT_IN_BOTTOM_L:
 		tp_button_set_state(tp, t, BUTTON_STATE_TOP_TO_IGNORE, event);
 		break;
@@ -305,6 +320,7 @@ tp_button_top_new_handle_event(struct tp_dispatch *tp,
 {
 	switch(event) {
 	case BUTTON_EVENT_IN_BOTTOM_R:
+	case BUTTON_EVENT_IN_BOTTOM_M:
 	case BUTTON_EVENT_IN_BOTTOM_L:
 		tp_button_set_state(tp, t, BUTTON_STATE_AREA, event);
 		break;
@@ -355,6 +371,7 @@ tp_button_top_to_ignore_handle_event(struct tp_dispatch *tp,
 					    event);
 		break;
 	case BUTTON_EVENT_IN_BOTTOM_R:
+	case BUTTON_EVENT_IN_BOTTOM_M:
 	case BUTTON_EVENT_IN_BOTTOM_L:
 	case BUTTON_EVENT_IN_AREA:
 		break;
@@ -377,6 +394,7 @@ tp_button_ignore_handle_event(struct tp_dispatch *tp,
 {
 	switch (event) {
 	case BUTTON_EVENT_IN_BOTTOM_R:
+	case BUTTON_EVENT_IN_BOTTOM_M:
 	case BUTTON_EVENT_IN_BOTTOM_L:
 	case BUTTON_EVENT_IN_TOP_R:
 	case BUTTON_EVENT_IN_TOP_M:
@@ -434,13 +452,13 @@ tp_button_handle_event(struct tp_dispatch *tp,
 			  button_state_to_str(t->button.state));
 }
 
-int
+void
 tp_button_handle_state(struct tp_dispatch *tp, uint64_t time)
 {
 	struct tp_touch *t;
 
 	tp_for_each_touch(tp, t) {
-		if (t->state == TOUCH_NONE)
+		if (t->state == TOUCH_NONE || t->state == TOUCH_HOVERING)
 			continue;
 
 		if (t->state == TOUCH_END) {
@@ -450,6 +468,8 @@ tp_button_handle_state(struct tp_dispatch *tp, uint64_t time)
 
 			if (is_inside_bottom_right_area(tp, t))
 				event = BUTTON_EVENT_IN_BOTTOM_R;
+			else if (is_inside_bottom_middle_area(tp, t))
+				event = BUTTON_EVENT_IN_BOTTOM_M;
 			else if (is_inside_bottom_left_area(tp, t))
 				event = BUTTON_EVENT_IN_BOTTOM_L;
 			else if (is_inside_top_right_area(tp, t))
@@ -468,8 +488,6 @@ tp_button_handle_state(struct tp_dispatch *tp, uint64_t time)
 		if (tp->queued & TOUCHPAD_EVENT_BUTTON_PRESS)
 			tp_button_handle_event(tp, t, BUTTON_EVENT_PRESS, time);
 	}
-
-	return 0;
 }
 
 static void
@@ -480,7 +498,7 @@ tp_button_handle_timeout(uint64_t now, void *data)
 	tp_button_handle_event(t->tp, t, BUTTON_EVENT_TIMEOUT, now);
 }
 
-int
+void
 tp_process_button(struct tp_dispatch *tp,
 		  const struct input_event *e,
 		  uint64_t time)
@@ -493,7 +511,7 @@ tp_process_button(struct tp_dispatch *tp,
 		log_bug_kernel(libinput,
 			       "received %s button event on a clickpad\n",
 			       libevdev_event_code_get_name(EV_KEY, e->code));
-		return 0;
+		return;
 	}
 
 	if (e->value) {
@@ -503,8 +521,6 @@ tp_process_button(struct tp_dispatch *tp,
 		tp->buttons.state &= ~mask;
 		tp->queued |= TOUCHPAD_EVENT_BUTTON_RELEASE;
 	}
-
-	return 0;
 }
 
 void
@@ -521,29 +537,59 @@ static void
 tp_init_softbuttons(struct tp_dispatch *tp,
 		    struct evdev_device *device)
 {
-	int width, height;
-	const struct input_absinfo *absinfo_x, *absinfo_y;
-	int xoffset, yoffset;
-	int yres;
+	double width, height;
+	struct device_coords edges;
+	int mb_le, mb_re; /* middle button left/right edge */
+	struct phys_coords mm = { 0.0, 0.0 };
 
-	absinfo_x = device->abs.absinfo_x;
-	absinfo_y = device->abs.absinfo_y;
-
-	xoffset = absinfo_x->minimum,
-	yoffset = absinfo_y->minimum,
-	yres = absinfo_y->resolution;
-	width = device->abs.dimensions.x;
-	height = device->abs.dimensions.y;
+	evdev_device_get_size(device, &width, &height);
 
 	/* button height: 10mm or 15% or the touchpad height,
 	   whichever is smaller */
-	if ((height * 0.15)/yres > 10) {
-		tp->buttons.bottom_area.top_edge =
-			absinfo_y->maximum - 10 * yres;
+	if (height * 0.15 > 10)
+		mm.y = height - 10;
+	else
+		mm.y = height * 0.85;
+
+	mm.x = width * 0.5;
+	edges = evdev_device_mm_to_units(device, &mm);
+	tp->buttons.bottom_area.top_edge = edges.y;
+	tp->buttons.bottom_area.rightbutton_left_edge = edges.x;
+
+	tp->buttons.bottom_area.middlebutton_left_edge = INT_MAX;
+
+	/* if middlebutton emulation is enabled, don't init a software area */
+	if (device->middlebutton.want_enabled)
+		return;
+
+	/* The middle button is 25% of the touchpad and centered. Many
+	 * touchpads don't have markings for the middle button at all so we
+	 * need to make it big enough to reliably hit it but not too big so
+	 * it takes away all the space.
+	 *
+	 * On touchpads with visible markings we reduce the size of the
+	 * middle button since users have a visual guide.
+	 */
+	if (tp->device->model_flags & EVDEV_MODEL_TOUCHPAD_VISIBLE_MARKER) {
+		mm.x = width/2 - 5; /* 10mm wide */
+		edges = evdev_device_mm_to_units(device, &mm);
+		mb_le = edges.x;
+
+		mm.x = width/2 + 5; /* 10mm wide */
+		edges = evdev_device_mm_to_units(device, &mm);
+		mb_re = edges.x;
 	} else {
-		tp->buttons.bottom_area.top_edge = height * .85 + yoffset;
+		mm.x = width * 0.375;
+		edges = evdev_device_mm_to_units(device, &mm);
+		mb_le = edges.x;
+
+		mm.x = width * 0.625;
+		edges = evdev_device_mm_to_units(device, &mm);
+		mb_re = edges.x;
 	}
-	tp->buttons.bottom_area.rightbutton_left_edge = width/2 + xoffset;
+
+	tp->buttons.bottom_area.middlebutton_left_edge = mb_le;
+	tp->buttons.bottom_area.rightbutton_left_edge = mb_re;
 }
 
 void
@@ -551,18 +597,7 @@ tp_init_top_softbuttons(struct tp_dispatch *tp,
 			struct evdev_device *device,
 			double topbutton_size_mult)
 {
-	int width;
-	const struct input_absinfo *absinfo_x, *absinfo_y;
-	int xoffset, yoffset;
-	int yres;
-
-	absinfo_x = device->abs.absinfo_x;
-	absinfo_y = device->abs.absinfo_y;
-
-	xoffset = absinfo_x->minimum,
-	yoffset = absinfo_y->minimum;
-	yres = absinfo_y->resolution;
-	width = device->abs.dimensions.x;
+	struct device_coords edges;
 
 	if (tp->buttons.has_topbuttons) {
 		/* T440s has the top button line 5mm from the top, event
@@ -570,10 +605,20 @@ tp_init_top_softbuttons(struct tp_dispatch *tp,
 		   top - which maps to 15%.  We allow the caller to enlarge the
 		   area using a multiplier for the touchpad disabled case. */
 		double topsize_mm = 10 * topbutton_size_mult;
+		struct phys_coords mm;
+		double width, height;
 
-		tp->buttons.top_area.bottom_edge = yoffset + topsize_mm * yres;
-		tp->buttons.top_area.rightbutton_left_edge = width * .58 + xoffset;
-		tp->buttons.top_area.leftbutton_right_edge = width * .42 + xoffset;
+		evdev_device_get_size(device, &width, &height);
+
+		mm.x = width * 0.60;
+		mm.y = topsize_mm;
+		edges = evdev_device_mm_to_units(device, &mm);
+		tp->buttons.top_area.bottom_edge = edges.y;
+		tp->buttons.top_area.rightbutton_left_edge = edges.x;
+
+		mm.x = width * 0.40;
+		edges = evdev_device_mm_to_units(device, &mm);
+		tp->buttons.top_area.leftbutton_right_edge = edges.x;
 	} else {
 		tp->buttons.top_area.bottom_edge = INT_MIN;
 	}
@@ -591,6 +636,9 @@ tp_button_config_click_get_methods(struct libinput_device *device)
 		if (tp->has_mt)
 			methods |= LIBINPUT_CONFIG_CLICK_METHOD_CLICKFINGER;
 	}
+
+	if (evdev->model_flags & EVDEV_MODEL_APPLE_TOUCHPAD_ONEBUTTON)
+		methods |= LIBINPUT_CONFIG_CLICK_METHOD_CLICKFINGER;
 
 	return methods;
 }
@@ -650,14 +698,15 @@ tp_click_get_default_method(struct tp_dispatch *tp)
 				      EVDEV_MODEL_SYSTEM76_BONOBO |
 				      EVDEV_MODEL_SYSTEM76_GALAGO |
 				      EVDEV_MODEL_SYSTEM76_KUDU |
-				      EVDEV_MODEL_CLEVO_W740SU;
+				      EVDEV_MODEL_CLEVO_W740SU |
+				      EVDEV_MODEL_APPLE_TOUCHPAD_ONEBUTTON;
+
+	if (device->model_flags & clickfinger_models)
+		return LIBINPUT_CONFIG_CLICK_METHOD_CLICKFINGER;
 
 	if (!tp->buttons.is_clickpad)
 		return LIBINPUT_CONFIG_CLICK_METHOD_NONE;
 	else if (libevdev_get_id_vendor(tp->device->evdev) == VENDOR_ID_APPLE)
-		return LIBINPUT_CONFIG_CLICK_METHOD_CLICKFINGER;
-
-	if (device->model_flags & clickfinger_models)
 		return LIBINPUT_CONFIG_CLICK_METHOD_CLICKFINGER;
 
 	return LIBINPUT_CONFIG_CLICK_METHOD_BUTTON_AREAS;
@@ -672,6 +721,80 @@ tp_button_config_click_get_default_method(struct libinput_device *device)
 	return tp_click_get_default_method(tp);
 }
 
+void
+tp_clickpad_middlebutton_apply_config(struct evdev_device *device)
+{
+	struct tp_dispatch *tp = (struct tp_dispatch*)device->dispatch;
+
+	if (!tp->buttons.is_clickpad ||
+	    tp->buttons.state != 0)
+		return;
+
+	if (device->middlebutton.want_enabled ==
+	    device->middlebutton.enabled)
+		return;
+
+	device->middlebutton.enabled = device->middlebutton.want_enabled;
+	if (tp->buttons.click_method ==
+	    LIBINPUT_CONFIG_CLICK_METHOD_BUTTON_AREAS)
+		tp_init_softbuttons(tp, device);
+}
+
+static int
+tp_clickpad_middlebutton_is_available(struct libinput_device *device)
+{
+	return evdev_middlebutton_is_available(device);
+}
+
+static enum libinput_config_status
+tp_clickpad_middlebutton_set(struct libinput_device *device,
+		     enum libinput_config_middle_emulation_state enable)
+{
+	struct evdev_device *evdev = (struct evdev_device*)device;
+
+	switch (enable) {
+	case LIBINPUT_CONFIG_MIDDLE_EMULATION_ENABLED:
+		evdev->middlebutton.want_enabled = true;
+		break;
+	case LIBINPUT_CONFIG_MIDDLE_EMULATION_DISABLED:
+		evdev->middlebutton.want_enabled = false;
+		break;
+	default:
+		return LIBINPUT_CONFIG_STATUS_INVALID;
+	}
+
+	tp_clickpad_middlebutton_apply_config(evdev);
+
+	return LIBINPUT_CONFIG_STATUS_SUCCESS;
+}
+
+static enum libinput_config_middle_emulation_state
+tp_clickpad_middlebutton_get(struct libinput_device *device)
+{
+	return evdev_middlebutton_get(device);
+}
+
+static enum libinput_config_middle_emulation_state
+tp_clickpad_middlebutton_get_default(struct libinput_device *device)
+{
+	return evdev_middlebutton_get_default(device);
+}
+
+static inline void
+tp_init_clickpad_middlebutton_emulation(struct tp_dispatch *tp,
+					struct evdev_device *device)
+{
+	device->middlebutton.enabled_default = false;
+	device->middlebutton.want_enabled = false;
+	device->middlebutton.enabled = false;
+
+	device->middlebutton.config.available = tp_clickpad_middlebutton_is_available;
+	device->middlebutton.config.set = tp_clickpad_middlebutton_set;
+	device->middlebutton.config.get = tp_clickpad_middlebutton_get;
+	device->middlebutton.config.get_default = tp_clickpad_middlebutton_get_default;
+	device->base.config.middle_emulation = &device->middlebutton.config;
+}
+
 static inline void
 tp_init_middlebutton_emulation(struct tp_dispatch *tp,
 			       struct evdev_device *device)
@@ -679,8 +802,12 @@ tp_init_middlebutton_emulation(struct tp_dispatch *tp,
 	bool enable_by_default,
 	     want_config_option;
 
-	if (tp->buttons.is_clickpad)
+	/* On clickpads we provide the config option but disable by default.
+	   When enabled, the middle software button disappears */
+	if (tp->buttons.is_clickpad) {
+		tp_init_clickpad_middlebutton_emulation(tp, device);
 		return;
+	}
 
 	/* init middle button emulation on non-clickpads, but only if we
 	 * don't have a middle button. Exception: ALPS touchpads don't know
@@ -701,7 +828,7 @@ tp_init_middlebutton_emulation(struct tp_dispatch *tp,
 				want_config_option);
 }
 
-int
+void
 tp_init_buttons(struct tp_dispatch *tp,
 		struct evdev_device *device)
 {
@@ -754,8 +881,6 @@ tp_init_buttons(struct tp_dispatch *tp,
 				    tp_libinput_context(tp),
 				    tp_button_handle_timeout, t);
 	}
-
-	return 0;
 }
 
 void
@@ -802,13 +927,13 @@ tp_post_physical_buttons(struct tp_dispatch *tp, uint64_t time)
 	return 0;
 }
 
-static inline int
-tp_check_clickfinger_distance(struct tp_dispatch *tp,
-			      struct tp_touch *t1,
-			      struct tp_touch *t2)
+static inline bool
+tp_clickfinger_within_distance(struct tp_dispatch *tp,
+			       struct tp_touch *t1,
+			       struct tp_touch *t2)
 {
 	double x, y;
-	int within_distance = 0;
+	bool within_distance = false;
 	int xres, yres;
 	int bottom_threshold;
 
@@ -832,7 +957,7 @@ tp_check_clickfinger_distance(struct tp_dispatch *tp,
 	if (x > 40 || y > 30)
 		goto out;
 
-	within_distance = 1;
+	within_distance = true;
 
 	/* if y spread is <= 20mm, they're definitely together. */
 	if (y <= 20)
@@ -890,7 +1015,7 @@ tp_clickfinger_set_button(struct tp_dispatch *tp)
 		goto out;
 	}
 
-	if (tp_check_clickfinger_distance(tp, first, second))
+	if (tp_clickfinger_within_distance(tp, first, second))
 		nfingers = 2;
 	else
 		nfingers = 1;
@@ -933,7 +1058,7 @@ tp_notify_clickpadbutton(struct tp_dispatch *tp,
 	}
 
 	/* Ignore button events not for the trackpoint while suspended */
-	if (tp->device->suspended)
+	if (tp->device->is_suspended)
 		return 0;
 
 	/* A button click always terminates edge scrolling, even if we
@@ -989,6 +1114,8 @@ tp_post_clickpadbutton_buttons(struct tp_dispatch *tp, uint64_t time)
 				break;
 			case BUTTON_EVENT_IN_TOP_M:
 				is_top = 1;
+				/* fallthrough */
+			case BUTTON_EVENT_IN_BOTTOM_M:
 				area |= MIDDLE;
 				break;
 			case BUTTON_EVENT_IN_TOP_R:
@@ -1009,7 +1136,10 @@ tp_post_clickpadbutton_buttons(struct tp_dispatch *tp, uint64_t time)
 			return 0;
 		}
 
-		if ((area & MIDDLE) || ((area & LEFT) && (area & RIGHT))) {
+		if ((tp->device->middlebutton.enabled || is_top) &&
+		    (area & LEFT) && (area & RIGHT)) {
+			button = BTN_MIDDLE;
+		} else if (area & MIDDLE) {
 			button = BTN_MIDDLE;
 		} else if (area & RIGHT) {
 			button = BTN_RIGHT;
@@ -1051,13 +1181,14 @@ tp_post_clickpadbutton_buttons(struct tp_dispatch *tp, uint64_t time)
 int
 tp_post_button_events(struct tp_dispatch *tp, uint64_t time)
 {
-	if (tp->buttons.is_clickpad)
+	if (tp->buttons.is_clickpad ||
+	    tp->device->model_flags & EVDEV_MODEL_APPLE_TOUCHPAD_ONEBUTTON)
 		return tp_post_clickpadbutton_buttons(tp, time);
 	else
 		return tp_post_physical_buttons(tp, time);
 }
 
-int
+bool
 tp_button_touch_active(const struct tp_dispatch *tp,
 		       const struct tp_touch *t)
 {

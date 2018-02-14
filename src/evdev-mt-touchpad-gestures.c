@@ -30,7 +30,7 @@
 #include "evdev-mt-touchpad.h"
 
 #define DEFAULT_GESTURE_SWITCH_TIMEOUT ms2us(100)
-#define DEFAULT_GESTURE_2FG_SCROLL_TIMEOUT ms2us(500)
+#define DEFAULT_GESTURE_2FG_SCROLL_TIMEOUT ms2us(150)
 
 static inline const char*
 gesture_state_to_str(enum tp_gesture_state state)
@@ -93,7 +93,7 @@ tp_get_average_touches_delta(struct tp_dispatch *tp)
 static void
 tp_gesture_start(struct tp_dispatch *tp, uint64_t time)
 {
-	struct libinput *libinput = tp->device->base.seat->libinput;
+	struct libinput *libinput = tp_libinput_context(tp);
 	const struct normalized_coords zero = { 0.0, 0.0 };
 
 	if (tp->gesture.started)
@@ -181,12 +181,15 @@ tp_gesture_get_active_touches(const struct tp_dispatch *tp,
 	return n;
 }
 
-static int
-tp_gesture_get_direction(struct tp_dispatch *tp, struct tp_touch *touch)
+static uint32_t
+tp_gesture_get_direction(struct tp_dispatch *tp, struct tp_touch *touch,
+			 unsigned int nfingers)
 {
 	struct normalized_coords normalized;
 	struct device_float_coords delta;
 	double move_threshold = TP_MM_TO_DPI_NORMALIZED(1);
+
+	move_threshold *= (nfingers - 1);
 
 	delta = device_delta(touch->point, touch->gesture.initial);
 
@@ -248,7 +251,7 @@ tp_gesture_handle_state_none(struct tp_dispatch *tp, uint64_t time)
 		if (ntouches == 2)
 			return GESTURE_STATE_SCROLL;
 		else
-			return GESTURE_STATE_SWIPE;
+			return GESTURE_STATE_NONE;
 	}
 
 	first = touches[0];
@@ -310,7 +313,7 @@ tp_gesture_same_directions(int dir1, int dir2)
 }
 
 static inline void
-tp_gesture_init_pinch( struct tp_dispatch *tp)
+tp_gesture_init_pinch(struct tp_dispatch *tp)
 {
 	tp_gesture_get_pinch_info(tp,
 				  &tp->gesture.initial_distance,
@@ -324,30 +327,33 @@ tp_gesture_handle_state_unknown(struct tp_dispatch *tp, uint64_t time)
 {
 	struct tp_touch *first = tp->gesture.touches[0],
 			*second = tp->gesture.touches[1];
-	int dir1, dir2;
+	uint32_t dir1, dir2;
 	int yres = tp->device->abs.absinfo_y->resolution;
 	int vert_distance;
 
-	/* for two-finger gestures, if the fingers stay unmoving for a
-	 * while, assume (slow) scroll */
-	if (tp->gesture.finger_count == 2 &&
-	    time > (tp->gesture.initial_time + DEFAULT_GESTURE_2FG_SCROLL_TIMEOUT)) {
-		tp_gesture_set_scroll_buildup(tp);
-		return GESTURE_STATE_SCROLL;
-	}
+	if (time > (tp->gesture.initial_time + DEFAULT_GESTURE_2FG_SCROLL_TIMEOUT)) {
+		/* for two-finger gestures, if the fingers stay unmoving for a
+		 * while, assume (slow) scroll */
+		if (tp->gesture.finger_count == 2) {
+			tp_gesture_set_scroll_buildup(tp);
+			return GESTURE_STATE_SCROLL;
+		}
 
-	/* Else check if one finger is > 20mm below the others */
-	vert_distance = abs(first->point.y - second->point.y);
-	if (vert_distance > 20 * yres &&
-	    tp->gesture.finger_count > 2 &&
-	    tp->gesture.enabled) {
-		tp_gesture_init_pinch(tp);
-		return GESTURE_STATE_PINCH;
+		/* for 3+ finger gestures, check if one finger is > 20mm
+		   below the others */
+		vert_distance = abs(first->point.y - second->point.y);
+		if (vert_distance > 20 * yres &&
+		    tp->gesture.enabled) {
+			tp_gesture_init_pinch(tp);
+			return GESTURE_STATE_PINCH;
+		} else {
+			return GESTURE_STATE_SWIPE;
+		}
 	}
 
 	/* Else wait for both fingers to have moved */
-	dir1 = tp_gesture_get_direction(tp, first);
-	dir2 = tp_gesture_get_direction(tp, second);
+	dir1 = tp_gesture_get_direction(tp, first, tp->gesture.finger_count);
+	dir2 = tp_gesture_get_direction(tp, second, tp->gesture.finger_count);
 	if (dir1 == UNDEFINED_DIRECTION || dir2 == UNDEFINED_DIRECTION)
 		return GESTURE_STATE_UNKNOWN;
 
@@ -525,7 +531,7 @@ tp_gesture_stop_twofinger_scroll(struct tp_dispatch *tp, uint64_t time)
 static void
 tp_gesture_end(struct tp_dispatch *tp, uint64_t time, bool cancelled)
 {
-	struct libinput *libinput = tp->device->base.seat->libinput;
+	struct libinput *libinput = tp_libinput_context(tp);
 	enum tp_gesture_state state = tp->gesture.state;
 
 	tp->gesture.state = GESTURE_STATE_NONE;
@@ -617,7 +623,7 @@ tp_gesture_handle_state(struct tp_dispatch *tp, uint64_t time)
 	}
 }
 
-int
+void
 tp_init_gesture(struct tp_dispatch *tp)
 {
 	/* two-finger scrolling is always enabled, this flag just
@@ -628,9 +634,8 @@ tp_init_gesture(struct tp_dispatch *tp)
 	tp->gesture.state = GESTURE_STATE_NONE;
 
 	libinput_timer_init(&tp->gesture.finger_count_switch_timer,
-			    tp->device->base.seat->libinput,
+			    tp_libinput_context(tp),
 			    tp_gesture_finger_count_switch_timeout, tp);
-	return 0;
 }
 
 void

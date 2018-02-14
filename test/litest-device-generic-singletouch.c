@@ -21,9 +21,7 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#if HAVE_CONFIG_H
 #include "config.h"
-#endif
 
 #include "litest.h"
 #include "litest-int.h"
@@ -44,7 +42,6 @@ static struct input_event down[] = {
 };
 
 static struct input_event move[] = {
-	{ .type = EV_ABS, .code = ABS_MT_SLOT, .value = LITEST_AUTO_ASSIGN },
 	{ .type = EV_ABS, .code = ABS_X, .value = LITEST_AUTO_ASSIGN },
 	{ .type = EV_ABS, .code = ABS_Y, .value = LITEST_AUTO_ASSIGN },
 	{ .type = EV_KEY, .code = BTN_TOUCH, .value = 1 },

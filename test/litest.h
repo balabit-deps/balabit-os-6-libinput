@@ -21,9 +21,7 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#if HAVE_CONFIG_H
 #include "config.h"
-#endif
 
 #ifndef LITEST_H
 #define LITEST_H
@@ -34,6 +32,23 @@
 #include <libevdev/libevdev-uinput.h>
 #include <libinput.h>
 #include <math.h>
+
+extern void litest_setup_tests_udev(void);
+extern void litest_setup_tests_path(void);
+extern void litest_setup_tests_pointer(void);
+extern void litest_setup_tests_touch(void);
+extern void litest_setup_tests_log(void);
+extern void litest_setup_tests_tablet(void);
+extern void litest_setup_tests_pad(void);
+extern void litest_setup_tests_touchpad(void);
+extern void litest_setup_tests_touchpad_tap(void);
+extern void litest_setup_tests_touchpad_buttons(void);
+extern void litest_setup_tests_trackpoint(void);
+extern void litest_setup_tests_trackball(void);
+extern void litest_setup_tests_misc(void);
+extern void litest_setup_tests_keyboard(void);
+extern void litest_setup_tests_device(void);
+extern void litest_setup_tests_gestures(void);
 
 void
 litest_fail_condition(const char *file,
@@ -153,49 +168,66 @@ litest_fail_comparison_ptr(const char *file,
 
 enum litest_device_type {
 	LITEST_NO_DEVICE = -1,
-	LITEST_SYNAPTICS_CLICKPAD = -2,
-	LITEST_SYNAPTICS_TOUCHPAD = -3,
-	LITEST_SYNAPTICS_TOPBUTTONPAD = -4,
-	LITEST_BCM5974 = -5,
-	LITEST_KEYBOARD = -6,
-	LITEST_TRACKPOINT = -7,
-	LITEST_MOUSE = -8,
-	LITEST_WACOM_TOUCH = -9,
-	LITEST_ALPS_SEMI_MT = -10,
-	LITEST_GENERIC_SINGLETOUCH = -11,
-	LITEST_MS_SURFACE_COVER = -12,
-	LITEST_QEMU_TABLET = -13,
-	LITEST_XEN_VIRTUAL_POINTER = -14,
-	LITEST_VMWARE_VIRTMOUSE = -15,
-	LITEST_SYNAPTICS_HOVER_SEMI_MT = -16,
-	LITEST_SYNAPTICS_TRACKPOINT_BUTTONS = -17,
-	LITEST_PROTOCOL_A_SCREEN = -18,
-	LITEST_WACOM_FINGER = -19,
-	LITEST_KEYBOARD_BLACKWIDOW = -20,
-	LITEST_WHEEL_ONLY = -21,
-	LITEST_MOUSE_ROCCAT = -22,
-	LITEST_LOGITECH_TRACKBALL = -23,
-	LITEST_ATMEL_HOVER = -24,
-	LITEST_ALPS_DUALPOINT = -25,
-	LITEST_MOUSE_LOW_DPI = -26,
-	LITEST_GENERIC_MULTITOUCH_SCREEN = -27,
-	LITEST_NEXUS4_TOUCH_SCREEN = -28,
-	LITEST_MAGIC_TRACKPAD = -29,
-	LITEST_ELANTECH_TOUCHPAD = -30,
-	LITEST_MOUSE_GLADIUS = -31,
-	LITEST_MOUSE_WHEEL_CLICK_ANGLE = -32,
-	LITEST_APPLE_KEYBOARD = -33,
-	LITEST_ANKER_MOUSE_KBD = -34,
-	LITEST_WACOM_BAMBOO = -35,
-	LITEST_WACOM_CINTIQ = -36,
-	LITEST_WACOM_INTUOS = -37,
-	LITEST_WACOM_ISDV4 = -38,
-	LITEST_WALTOP = -39,
-	LITEST_HUION_TABLET = -40,
-	LITEST_CYBORG_RAT = -41,
-	LITEST_YUBIKEY = -42,
-	LITEST_SYNAPTICS_I2C = -43,
-	LITEST_WACOM_CINTIQ_24HD = -44,
+	LITEST_SYNAPTICS_CLICKPAD_X220 = -1000,
+	LITEST_SYNAPTICS_TOUCHPAD,
+	LITEST_SYNAPTICS_TOPBUTTONPAD,
+	LITEST_BCM5974,
+	LITEST_KEYBOARD,
+	LITEST_TRACKPOINT,
+	LITEST_MOUSE,
+	LITEST_WACOM_TOUCH,
+	LITEST_ALPS_SEMI_MT,
+	LITEST_GENERIC_SINGLETOUCH,
+	LITEST_MS_SURFACE_COVER,
+	LITEST_QEMU_TABLET,
+	LITEST_XEN_VIRTUAL_POINTER,
+	LITEST_VMWARE_VIRTMOUSE,
+	LITEST_SYNAPTICS_HOVER_SEMI_MT,
+	LITEST_SYNAPTICS_TRACKPOINT_BUTTONS,
+	LITEST_PROTOCOL_A_SCREEN,
+	LITEST_WACOM_FINGER,
+	LITEST_KEYBOARD_BLACKWIDOW,
+	LITEST_WHEEL_ONLY,
+	LITEST_MOUSE_ROCCAT,
+	LITEST_LOGITECH_TRACKBALL,
+	LITEST_ATMEL_HOVER,
+	LITEST_ALPS_DUALPOINT,
+	LITEST_MOUSE_LOW_DPI,
+	LITEST_GENERIC_MULTITOUCH_SCREEN,
+	LITEST_NEXUS4_TOUCH_SCREEN,
+	LITEST_MAGIC_TRACKPAD,
+	LITEST_ELANTECH_TOUCHPAD,
+	LITEST_MOUSE_GLADIUS,
+	LITEST_MOUSE_WHEEL_CLICK_ANGLE,
+	LITEST_APPLE_KEYBOARD,
+	LITEST_ANKER_MOUSE_KBD,
+	LITEST_WACOM_BAMBOO,
+	LITEST_WACOM_CINTIQ,
+	LITEST_WACOM_INTUOS,
+	LITEST_WACOM_ISDV4,
+	LITEST_WALTOP,
+	LITEST_HUION_TABLET,
+	LITEST_CYBORG_RAT,
+	LITEST_YUBIKEY,
+	LITEST_SYNAPTICS_I2C,
+	LITEST_WACOM_CINTIQ_24HD,
+	LITEST_MULTITOUCH_FUZZ_SCREEN,
+	LITEST_WACOM_INTUOS3_PAD,
+	LITEST_WACOM_INTUOS5_PAD,
+	LITEST_KEYBOARD_ALL_CODES,
+	LITEST_MAGICMOUSE,
+	LITEST_WACOM_EKR,
+	LITEST_WACOM_CINTIQ_24HDT_PAD,
+	LITEST_WACOM_CINTIQ_13HDT_PEN,
+	LITEST_WACOM_CINTIQ_13HDT_PAD,
+	LITEST_WACOM_CINTIQ_13HDT_FINGER,
+	LITEST_WACOM_HID4800_PEN,
+	LITEST_MOUSE_WHEEL_CLICK_COUNT,
+	LITEST_CALIBRATED_TOUCHSCREEN,
+	LITEST_ACER_HAWAII_KEYBOARD,
+	LITEST_ACER_HAWAII_TOUCHPAD,
+	LITEST_SYNAPTICS_RMI4,
+	LITEST_APPLETOUCH,
 };
 
 enum litest_device_feature {
@@ -222,6 +254,10 @@ enum litest_device_feature {
 	LITEST_DISTANCE = 1 << 18,
 	LITEST_TOOL_SERIAL = 1 << 19,
 	LITEST_TILT = 1 << 20,
+	LITEST_TABLET_PAD = 1 << 21,
+	LITEST_RING = 1 << 22,
+	LITEST_STRIP = 1 << 23,
+	LITEST_TRACKBALL = 1 << 24,
 };
 
 struct litest_device {
@@ -236,8 +272,6 @@ struct litest_device {
 	bool skip_ev_syn;
 
 	void *private; /* device-specific data */
-
-	char *udev_rule_file;
 };
 
 struct axis_replacement {
@@ -319,9 +353,6 @@ _litest_add_ranged_no_device(const char *name,
 			     const char *funcname,
 			     void *func,
 			     const struct range *range);
-
-extern void
-litest_setup_tests(void);
 
 struct litest_device *
 litest_create_device(enum litest_device_type which);
@@ -433,6 +464,24 @@ litest_tablet_motion(struct litest_device *d,
 		     struct axis_replacement *axes);
 
 void
+litest_pad_ring_start(struct litest_device *d, double value);
+
+void
+litest_pad_ring_change(struct litest_device *d, double value);
+
+void
+litest_pad_ring_end(struct litest_device *d);
+
+void
+litest_pad_strip_start(struct litest_device *d, double value);
+
+void
+litest_pad_strip_change(struct litest_device *d, double value);
+
+void
+litest_pad_strip_end(struct litest_device *d);
+
+void
 litest_hover_start(struct litest_device *d,
 		   unsigned int slot,
 		   double x,
@@ -485,7 +534,14 @@ void
 litest_drain_events(struct libinput *li);
 
 void
+litest_assert_event_type(struct libinput_event *event,
+			 enum libinput_event_type want);
+
+void
 litest_assert_empty_queue(struct libinput *li);
+
+void
+litest_assert_touch_sequence(struct libinput *li);
 
 struct libinput_event_pointer *
 litest_is_button_event(struct libinput_event *event,
@@ -518,6 +574,19 @@ struct libinput_event_tablet_tool *
 litest_is_tablet_event(struct libinput_event *event,
 		       enum libinput_event_type type);
 
+struct libinput_event_tablet_pad *
+litest_is_pad_button_event(struct libinput_event *event,
+			   unsigned int button,
+			   enum libinput_button_state state);
+struct libinput_event_tablet_pad *
+litest_is_pad_ring_event(struct libinput_event *event,
+			 unsigned int number,
+			 enum libinput_tablet_pad_ring_axis_source source);
+struct libinput_event_tablet_pad *
+litest_is_pad_strip_event(struct libinput_event *event,
+			  unsigned int number,
+			  enum libinput_tablet_pad_strip_axis_source source);
+
 void
 litest_assert_button_event(struct libinput *li,
 			   unsigned int button,
@@ -541,6 +610,10 @@ void
 litest_assert_tablet_proximity_event(struct libinput *li,
 				     enum libinput_tablet_tool_proximity_state state);
 
+void
+litest_assert_pad_button_event(struct libinput *li,
+				    unsigned int button,
+				    enum libinput_button_state state);
 struct libevdev_uinput *
 litest_create_uinput_device(const char *name,
 			    struct input_id *id,
@@ -581,6 +654,12 @@ litest_timeout_dwt_long(void);
 
 void
 litest_timeout_gesture(void);
+
+void
+litest_timeout_gesture_scroll(void);
+
+void
+litest_timeout_trackpoint(void);
 
 void
 litest_push_event_frame(struct litest_device *dev);
@@ -645,6 +724,17 @@ litest_disable_tap(struct libinput_device *device)
 	status = libinput_device_config_tap_set_enabled(device,
 							LIBINPUT_CONFIG_TAP_DISABLED);
 
+	litest_assert_int_eq(status, expected);
+}
+
+static inline void
+litest_set_tap_map(struct libinput_device *device,
+		   enum libinput_config_tap_button_map map)
+{
+	enum libinput_config_status status, expected;
+
+	expected = LIBINPUT_CONFIG_STATUS_SUCCESS;
+	status = libinput_device_config_tap_set_button_map(device, map);
 	litest_assert_int_eq(status, expected);
 }
 
@@ -751,6 +841,32 @@ litest_disable_drag_lock(struct libinput_device *device)
 	expected = LIBINPUT_CONFIG_STATUS_SUCCESS;
 	status = libinput_device_config_tap_set_drag_lock_enabled(device,
 								  LIBINPUT_CONFIG_DRAG_LOCK_DISABLED);
+
+	litest_assert_int_eq(status, expected);
+}
+
+static inline void
+litest_enable_middleemu(struct litest_device *dev)
+{
+	struct libinput_device *device = dev->libinput_device;
+	enum libinput_config_status status, expected;
+
+	expected = LIBINPUT_CONFIG_STATUS_SUCCESS;
+	status = libinput_device_config_middle_emulation_set_enabled(device,
+								     LIBINPUT_CONFIG_MIDDLE_EMULATION_ENABLED);
+
+	litest_assert_int_eq(status, expected);
+}
+
+static inline void
+litest_disable_middleemu(struct litest_device *dev)
+{
+	struct libinput_device *device = dev->libinput_device;
+	enum libinput_config_status status, expected;
+
+	expected = LIBINPUT_CONFIG_STATUS_SUCCESS;
+	status = libinput_device_config_middle_emulation_set_enabled(device,
+								     LIBINPUT_CONFIG_MIDDLE_EMULATION_DISABLED);
 
 	litest_assert_int_eq(status, expected);
 }
